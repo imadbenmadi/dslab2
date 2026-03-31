@@ -50,6 +50,7 @@ from visualization.api_server import (
     set_runtime_callbacks,
 )
 from results.logging_utils import setup_application_logger, write_json_event
+from results.baseline_results import get_baseline_tracker
 
 
 class UnifiedSmartCityApp:
@@ -99,6 +100,9 @@ class UnifiedSmartCityApp:
         self.logger = setup_application_logger("smart_city", "results/logs")
         self.json_event_log_path = "results/logs/events.jsonl"
         self.runtime_events = deque(maxlen=500)
+        
+        # Start tracking for this system type
+        self.baseline_tracker.start_run(self.system_type)
 
         # Training state
         self.training_batch_count = 0
@@ -132,11 +136,9 @@ class UnifiedSmartCityApp:
 
         # Agent analytics for UI observability
         self.agent_history = deque(maxlen=300)
-        self.nsga_summary = {
-            "baseline1": {"name": "Pure NSGA-II", "successRate": 47.0, "avgLatency": 167.2, "totalEnergy": 250.5},
-            "baseline2": {"name": "TOF + NSGA-II", "successRate": 68.4, "avgLatency": 205.2, "totalEnergy": 265.3},
-            "baseline3": {"name": "TOF + MMDE-NSGA-II", "successRate": 80.4, "avgLatency": 163.0, "totalEnergy": 242.1},
-        }
+        self.baseline_tracker = get_baseline_tracker()
+        # Will be populated with real data from tracker
+        self.nsga_summary = {}
         self.agent_stats = {
             "agent1": {
                 "rewardSum": 0.0,
@@ -189,13 +191,17 @@ class UnifiedSmartCityApp:
         # Live map state
         self.vehicle_states: List[Dict] = []
         self.trajectory_paths: Dict[str, List[Dict]] = {}
+        self.handoff_events = []  # Recent handoff events for visualization
         self.map_state = {
             "city": "Istanbul",
             "bounds": {"xMin": 0, "xMax": 1000, "yMin": 0, "yMax": 1000},
             "fogNodes": [],
             "cloud": {"x": 500, "y": 500, "name": "Cloud"},
             "vehicles": [],
-            "offloads": [],
+            "connections": [],  # All active connections (device->fog, fog->fog, fog->cloud)
+            "offloads": [],  # Task offload visualization (subset of connections)
+            "handoffs": [],  # Handoff transitions
+            "trajectories": [],  # Vehicle trajectory predictions
             "simulationTime": 0,
         }
 
@@ -272,6 +278,9 @@ class UnifiedSmartCityApp:
     def _api_stop_simulation(self):
         self.running = False
         self.logic_snapshot["running"] = False
+        # Finalize baseline results on manual stop
+        if self.sim_time > 0:
+            self.baseline_tracker.finalize_run(self.sim_time)
         self._log_event("warning", "simulation_stopped")
         return {"running": False, "stopped": True}
 
@@ -459,6 +468,7 @@ class UnifiedSmartCityApp:
     def _initialize_live_map(self):
         """Initialize fog placement and vehicle trajectories."""
         fog_nodes = []
+        coverage_zones = []
         for fog_id, fog_data in FOG_NODES.items():
             x, y = fog_data["pos"]
             fog_nodes.append(
@@ -471,8 +481,16 @@ class UnifiedSmartCityApp:
                     "load": float(fog_data.get("load", 0.3)),
                 }
             )
+            # Add coverage zone for visualization
+            coverage_zones.append({
+                "fogId": fog_id,
+                "center": {"x": float(x), "y": float(y)},
+                "radius": float(FOG_COVERAGE_RADIUS),
+                "name": fog_data.get("name", f"Fog-{fog_id}"),
+            })
 
         self.map_state["fogNodes"] = fog_nodes
+        self.map_state["coverageZones"] = coverage_zones
 
         # Prefer recorded trajectories so mobility and handoff behavior are realistic and reproducible.
         self.trajectory_paths = self._load_trajectory_paths(max_vehicles=N_VEHICLES)
@@ -1114,6 +1132,21 @@ class UnifiedSmartCityApp:
         self.total_latency_ms += cumulative_latency_ms
         self.total_energy_j += task_energy_j
         self.handoff_count += local_handoffs
+        
+        # Record metrics in baseline tracker
+        destination = None
+        if len(offloads) == 0:
+            destination = "local"
+        elif offloads and "destination" in offloads[-1]:
+            destination = offloads[-1]["destination"]
+        self.baseline_tracker.record_task_completion(
+            latency_ms=cumulative_latency_ms,
+            energy_j=task_energy_j,
+            deadline_met=task_deadline_met,
+            destination=destination
+        )
+        if local_handoffs > 0:
+            self.baseline_tracker.record_handoff()
 
         # HTB signal for missed deadline due to mobility stress
         if (not task_deadline_met) and local_handoffs > 0:
@@ -1188,7 +1221,47 @@ class UnifiedSmartCityApp:
                 # update map state
                 self.map_state["vehicles"] = vehicles_out
                 self.map_state["offloads"] = offloads
+                self.map_state["connections"] = offloads  # connections = all offloads (device->fog, fog->fog, fog->cloud)
+                self.map_state["handoffs"] = [o for o in offloads if o.get("class") == "handoff"]  # Filter handoff class
                 self.map_state["simulationTime"] = self.sim_time
+                
+                # Add trajectory predictions for each vehicle
+                trajectories = []
+                for vehicle in vehicles_out:
+                    try:
+                        t_exit = self.predictor.compute_t_exit(
+                            (vehicle["x"], vehicle["y"]), 
+                            vehicle.get("speed_ms", 0),
+                            vehicle.get("heading", 0),
+                            "A"  # Default to first fog for trajectory calc
+                        )
+                        if t_exit > 0 and t_exit != float('inf'):
+                            next_fog = self.predictor.predict_next_fog(
+                                (vehicle["x"], vehicle["y"]),
+                                vehicle.get("speed_ms", 0),
+                                vehicle.get("heading", 0),
+                                t_exit,
+                                "A"
+                            )
+                            waypoints = [
+                                {"x": vehicle["x"], "y": vehicle["y"]},
+                                {
+                                    "x": vehicle["x"] + vehicle.get("speed_ms", 0) * np.cos(np.radians(vehicle.get("heading", 0))) * t_exit,
+                                    "y": vehicle["y"] + vehicle.get("speed_ms", 0) * np.sin(np.radians(vehicle.get("heading", 0))) * t_exit
+                                }
+                            ]
+                            trajectories.append({
+                                "vehicleId": vehicle["id"],
+                                "waypoints": waypoints,
+                                "t_exit": float(t_exit),
+                                "nextFog": next_fog,
+                                "mode": self.predictor.select_mode(t_exit, 0)
+                            })
+                    except Exception as e:
+                        # Skip trajectory if prediction fails
+                        pass
+                
+                self.map_state["trajectories"] = trajectories
 
                 success_rate = (self.deadline_met_tasks / self.total_tasks * 100.0) if self.total_tasks else 0.0
                 avg_latency = (self.total_latency_ms / self.total_tasks) if self.total_tasks else 0.0
@@ -1260,6 +1333,8 @@ class UnifiedSmartCityApp:
             print("[SIM] Completed")
             self.running = False
             self.logic_snapshot["running"] = False
+            # Finalize baseline results
+            self.baseline_tracker.finalize_run(self.sim_time)
             self._log_event("info", "simulation_completed", total_tasks=self.total_tasks)
         except Exception as e:
             print(f"[SIM] Error: {e}")

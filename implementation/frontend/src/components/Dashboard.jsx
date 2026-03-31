@@ -2,6 +2,8 @@ import React from "react";
 import useSystemStore from "../store/systemStore";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { MapContainer, TileLayer, Circle, Polyline } from "react-leaflet";
+import VehicleTrajectoryPanel from "./VehicleTrajectoryPanel";
+import ConnectionsMonitor from "./ConnectionsMonitor";
 
 /**
  * Main Dashboard Component
@@ -18,6 +20,9 @@ const Dashboard = ({ mapOnly = false }) => {
         resetSimulation,
         setSystemType,
     } = useSystemStore();
+
+    const [showTrajectory, setShowTrajectory] = React.useState(false);
+    const [showConnections, setShowConnections] = React.useState(false);
 
     useWebSocket();
 
@@ -207,6 +212,23 @@ const Dashboard = ({ mapOnly = false }) => {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                             <AgentPerformance metrics={metrics} />
                             <HandoffMetrics metrics={metrics} />
+                        </div>
+                        {/* Connections & Trajectory Monitoring */}
+                        <div className="grid grid-cols-1 gap-6 mb-8">
+                            <ConnectionsMonitor
+                                isOpen={showConnections}
+                                onToggle={() =>
+                                    setShowConnections(!showConnections)
+                                }
+                            />
+                        </div>
+                        <div className="grid grid-cols-1 gap-6 mb-8">
+                            <VehicleTrajectoryPanel
+                                isOpen={showTrajectory}
+                                onToggle={() =>
+                                    setShowTrajectory(!showTrajectory)
+                                }
+                            />
                         </div>
                         {/* Istanbul City Visualization & Learning Status */}
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

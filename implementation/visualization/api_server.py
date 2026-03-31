@@ -12,6 +12,7 @@ import numpy as np
 from typing import Dict, List, Any
 from collections import deque
 from storage.data_store import get_data_store
+from results.baseline_results import get_baseline_tracker
 from .websocket_server import get_ws_server, SystemMetrics
 
 
@@ -296,27 +297,40 @@ def get_config():
 
 @app.route('/api/baselines', methods=['GET'])
 def get_baselines():
-    """Get baseline comparison data"""
-    return jsonify({
+    """Get baseline comparison data - returns real results from runs or defaults."""
+    tracker = get_baseline_tracker()
+    comparison = tracker.get_system_comparison()
+    
+    # Ensure all baselines are present with defaults if needed
+    defaults = {
         'baseline1': {
             'name': 'Pure NSGA-II',
-            'success_rate': 47.0,
-            'avg_latency': 167.2,
-            'total_energy': 250.5,
+            'successRate': 47.0,
+            'avgLatency': 167.2,
+            'totalEnergy': 250.5,
         },
         'baseline2': {
             'name': 'TOF + NSGA-II',
-            'success_rate': 68.4,
-            'avg_latency': 205.2,
-            'total_energy': 265.3,
+            'successRate': 68.4,
+            'avgLatency': 205.2,
+            'totalEnergy': 265.3,
         },
         'baseline3': {
             'name': 'TOF + MMDE-NSGA-II',
-            'success_rate': 80.4,
-            'avg_latency': 163.0,
-            'total_energy': 242.1,
+            'successRate': 80.4,
+            'avgLatency': 163.0,
+            'totalEnergy': 242.1,
         },
-    })
+    }
+    
+    result = {}
+    for key in ['baseline1', 'baseline2', 'baseline3']:
+        if key in comparison and comparison[key]:
+            result[key] = comparison[key]
+        else:
+            result[key] = defaults[key]
+    
+    return jsonify(result)
 
 
 @app.route('/api/system-info', methods=['GET'])
@@ -365,6 +379,126 @@ def export_data():
         'Content-Disposition': 'attachment; filename=metrics.csv',
         'Content-Type': 'text/csv'
     }
+
+
+@app.route('/api/map/state', methods=['GET'])
+def get_map_state():
+    """Get map visualization state: vehicles, connections, handoffs, coverage zones"""
+    ws_server = get_ws_server()
+    
+    if not ws_server:
+        return jsonify({
+            'vehicles': [],
+            'fogNodes': [],
+            'cloud': [],
+            'connections': [],
+            'handoffs': [],
+            'coverageZones': [],
+            'timestamp': datetime.now().isoformat()
+        })
+    
+    latest_state = ws_server.latest_state or {}
+    
+    # Build map structure
+    map_state = {
+        'vehicles': latest_state.get('vehicles', []),
+        'fogNodes': latest_state.get('fogNodes', []),
+        'cloud': latest_state.get('cloud', {}),
+        'connections': latest_state.get('connections', []),
+        'handoffs': latest_state.get('handoffs', []),
+        'coverageZones': latest_state.get('coverageZones', []),
+        'timestamp': datetime.now().isoformat()
+    }
+    
+    return jsonify(map_state)
+
+
+@app.route('/api/map/connections', methods=['GET'])
+def get_connections():
+    """Get all active connections on the network (task offloads, fog-to-fog relays, handoffs)"""
+    ws_server = get_ws_server()
+    
+    if not ws_server:
+        return jsonify({'connections': [], 'count': 0})
+    
+    latest_state = ws_server.latest_state or {}
+    connections = latest_state.get('connections', [])
+    
+    # Group by type
+    by_type = {}
+    for conn in connections:
+        conn_type = conn.get('type', 'unknown')
+        if conn_type not in by_type:
+            by_type[conn_type] = []
+        by_type[conn_type].append(conn)
+    
+    return jsonify({
+        'connections': connections,
+        'count': len(connections),
+        'byType': by_type,
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+@app.route('/api/map/handoffs', methods=['GET'])
+def get_handoffs():
+    """Get all recent handoff events"""
+    ws_server = get_ws_server()
+    
+    if not ws_server:
+        return jsonify({'handoffs': [], 'count': 0})
+    
+    latest_state = ws_server.latest_state or {}
+    handoffs = latest_state.get('handoffs', [])
+    
+    return jsonify({
+        'handoffs': handoffs,
+        'count': len(handoffs),
+        'timestamp': datetime.now().isoformat()
+    })
+
+
+@app.route('/api/map/trajectory/<vehicle_id>', methods=['GET'])
+def get_vehicle_trajectory(vehicle_id):
+    """Get trajectory prediction for a specific vehicle"""
+    ws_server = get_ws_server()
+    
+    if not ws_server:
+        return jsonify({
+            'vehicleId': vehicle_id,
+            'trajectory': [],
+            't_exit': None,
+            'nextFog': None
+        })
+    
+    latest_state = ws_server.latest_state or {}
+    vehicles = latest_state.get('vehicles', [])
+    
+    vehicle = None
+    for v in vehicles:
+        if v.get('id') == vehicle_id:
+            vehicle = v
+            break
+    
+    if not vehicle:
+        return jsonify({
+            'vehicleId': vehicle_id,
+            'trajectory': [],
+            't_exit': None,
+            'nextFog': None
+        }), 404
+    
+    return jsonify({
+        'vehicleId': vehicle_id,
+        'trajectory': vehicle.get('trajectoryWaypoints', []),
+        'position': {'x': vehicle.get('x'), 'y': vehicle.get('y')},
+        'heading': vehicle.get('heading_deg', 0),
+        'speed': vehicle.get('speed_kmh', 0),
+        't_exit': vehicle.get('t_exit', None),
+        'nextFog': vehicle.get('nextFog', None),
+        'currentFog': vehicle.get('currentFog', None),
+        'timestamp': datetime.now().isoformat()
+    })
 
 
 # React app routing

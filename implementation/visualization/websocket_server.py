@@ -90,6 +90,7 @@ class WebSocketServer:
         self.loop = None
         self.server = None
         self.running = False
+        self.latest_state: Dict[str, Any] = {}  # Store latest map state for API queries
         
     async def register_client(self, websocket):
         """Register new WebSocket client"""
@@ -115,10 +116,22 @@ class WebSocketServer:
         """Send metrics to all connected clients"""
         if not self.clients:
             return
+        
+        # Store latest state for API queries
+        metrics_dict = metrics.to_dict()
+        self.latest_state = {
+            'vehicles': metrics_dict.get('map', {}).get('vehicles', []),
+            'fogNodes': metrics_dict.get('map', {}).get('fogNodes', []),
+            'cloud': metrics_dict.get('map', {}).get('cloud', {}),
+            'connections': metrics_dict.get('map', {}).get('connections', []),
+            'handoffs': metrics_dict.get('map', {}).get('handoffs', []),
+            'coverageZones': metrics_dict.get('map', {}).get('coverageZones', []),
+            'timestamp': metrics_dict.get('timestamp'),
+        }
             
         msg = json.dumps({
             'type': 'metrics',
-            'data': metrics.to_dict()
+            'data': metrics_dict
         })
         
         # Send to all clients, remove disconnected ones
