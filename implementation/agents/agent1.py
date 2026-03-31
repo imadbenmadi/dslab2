@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import numpy as np
+from typing import List, Dict
 from config import *
 from agents.dqn import DQNNetwork, ReplayBuffer
 
@@ -18,11 +19,27 @@ class Agent1:
         self.action_map = {0: 'FOG_A', 1: 'FOG_B', 2: 'FOG_C', 3: 'FOG_D', 4: 'CLOUD'}
         self.losses = []
 
-    def pretrain(self, training_pairs: list, epochs: int = 10):
-        """Learn from NSGA-II solutions using supervised learning."""
+    def _validate_pretrain_pairs(self, training_pairs: List[Dict]):
+        """Ensure pairs are produced by TOF + MMDE-NSGA-II pipeline."""
         if not training_pairs:
-            return
-        states  = torch.FloatTensor(np.array([p['state']  for p in training_pairs]))
+            raise ValueError("Agent1 pretrain requires non-empty TOF+MMDE-NSGA-II training pairs")
+
+        required_source = "tof-mmde-nsga2"
+        for idx, pair in enumerate(training_pairs):
+            if "state" not in pair or "action" not in pair:
+                raise ValueError(f"Invalid training pair at index {idx}: missing state/action")
+
+            source = pair.get("source", "")
+            if source != required_source:
+                raise ValueError(
+                    f"Invalid training source at index {idx}: expected '{required_source}', got '{source or 'missing'}'"
+                )
+
+    def pretrain(self, training_pairs: List[Dict], epochs: int = 10):
+        """Behavioral cloning from TOF + MMDE-NSGA-II expert labels only."""
+        self._validate_pretrain_pairs(training_pairs)
+
+        states = torch.FloatTensor(np.array([p['state'] for p in training_pairs]))
         actions = torch.LongTensor([p['action'] for p in training_pairs])
         criterion = nn.CrossEntropyLoss()
         for epoch in range(epochs):
@@ -33,7 +50,18 @@ class Agent1:
             self.optimizer.step()
         # Sync target network
         self.target_net.load_state_dict(self.online_net.state_dict())
-        print(f"Pre-training complete. Final loss: {loss.item():.4f}")
+        print(f"Pre-training complete (TOF+MMDE-NSGA-II). Final loss: {loss.item():.4f}")
+
+    def pretrain_from_tof_mmde_nsga2(self, pebble_steps: List, fog_states: Dict, pareto_result: Dict, epochs: int = 10) -> int:
+        """Build labels from TOF+MMDE-NSGA-II output and pretrain Agent1."""
+        from optimizer.nsga2_mmde import extract_training_pairs
+
+        training_pairs = extract_training_pairs(pebble_steps, fog_states, pareto_result)
+        if not training_pairs:
+            return 0
+
+        self.pretrain(training_pairs, epochs=epochs)
+        return len(training_pairs)
 
     def select_action(self, state: np.ndarray) -> int:
         """Epsilon-greedy action selection."""

@@ -13,7 +13,8 @@ class TOFBroker:
 
     def classify(self, step: DAGStep) -> str:
         """Returns 'boulder' or 'pebble'"""
-        return 'boulder' if self.compute_ec(step) >= self.threshold else 'pebble'
+        # Keep threshold boundary as fog-capable so EC==threshold is still treated as pebble.
+        return 'boulder' if self.compute_ec(step) > self.threshold else 'pebble'
 
     def process_dag(self, task: DAGTask) -> dict:
         """
@@ -26,7 +27,7 @@ class TOFBroker:
                 continue                        # Step 1 always runs on device
             ec = self.compute_ec(step)
             step.ec = ec
-            if ec >= self.threshold:
+            if ec > self.threshold:
                 step.classification = 'boulder'
                 step.assigned_to = 'CLOUD'      # Immediate routing decision
                 boulders.append(step)

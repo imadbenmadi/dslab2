@@ -1,9 +1,9 @@
-# Smart City Vehicular Task Offloading System
+# Smart City Vehicular Task Offloading System - Complete Explanation
 
-## Complete Technical Explanation
+Note: The latest framework-oriented architecture and control/data plane details are documented in explaning v2.md.
 
-**Project:** Smart City Vehicular Object Detection — Istanbul Urban Network  
-**Status:** ✅ Production-Ready  
+**Project:** Smart City Task Offloading with DQN + TOF + MMDE-NSGA-II  
+**Location:** Istanbul Urban Network (50 Vehicles, 4 Fog Nodes, 1 Cloud)  
 **Last Updated:** March 30, 2026
 
 ---
@@ -35,9 +35,9 @@ This is a **production-grade Python simulation** for IoT-Fog-Cloud task offloadi
 
 ### Real-World Integration
 
-✅ **CARLA Simulator:** Realistic vehicle trajectories in Istanbul  
-✅ **YOLOv5 Benchmarks:** Real object detection latencies (CPU/GPU/Edge TPU)  
-✅ **CRAWDAD Traces:** Actual 4G/WiFi network bandwidth patterns
+**CARLA Simulator:** Realistic vehicle trajectories in Istanbul  
+**YOLOv5 Benchmarks:** Real object detection latencies (CPU/GPU/Edge TPU)  
+**CRAWDAD Traces:** Actual 4G/WiFi network bandwidth patterns
 
 ---
 
@@ -527,58 +527,58 @@ action = agent1.select_action(state)
 **Datasets:**
 
 ```python
-from datasets import TrajectoryGenerator, NetworkBandwidthTrace
+import pandas as pd
 
-traj_gen = TrajectoryGenerator(num_vehicles=10)
-trajectories = traj_gen.generate_fleet()
+traj = pd.read_csv('results/carla_trajectories.csv')
+bandwidth = pd.read_csv('results/network_bandwidth.csv')
 
-trace = NetworkBandwidthTrace('urban_4g')
-bandwidth = trace.get_bandwidth_at_time(5.3)
+print(len(traj), 'trajectory rows')
+print(len(bandwidth), 'bandwidth rows')
 ```
 
 ---
 
 ## Implementation Status
 
-### Core System ✅ COMPLETE
+### Core System - COMPLETE
 
 **Framework & Architecture**
 
-- ✅ 10 system modules (~1,800 LOC)
-- ✅ NSGA-II multi-objective optimizer
-- ✅ DQN agents for task placement & routing
-- ✅ Pre-training pipeline with behavioral cloning
+- 10 system modules (~1,800 LOC)
+- NSGA-II multi-objective optimizer
+- DQN agents for task placement & routing
+- Pre-training pipeline with behavioral cloning
 
-**Real-World Data Integration ✅ COMPLETE**
+**Real-World Data Integration - COMPLETE**
 
-- ✅ CARLA trajectory generator (Istanbul-specific)
-- ✅ YOLOv5 latency benchmarks (actual device timings)
-- ✅ CRAWDAD network traces (real bandwidth patterns)
-- ✅ 500 training pairs generated from real workloads
-- ✅ Agent 1 converged with loss: 1.5424
+- CARLA trajectory generator (Istanbul-specific)
+- YOLOv5 latency benchmarks (actual device timings)
+- CRAWDAD network traces (real bandwidth patterns)
+- 500 training pairs generated from real workloads
+- Agent 1 converged with loss: 1.5424
 
-**Simulation & Evaluation ✅ COMPLETE**
+**Simulation & Evaluation - COMPLETE**
 
-- ✅ SimPy discrete-event simulation framework
-- ✅ Vehicle mobility processes
-- ✅ Fog resources with queue management
-- ✅ Network simulation with real bandwidth traces
-- ✅ End-to-end execution verified
-- ✅ Real-time metrics collection
+- SimPy discrete-event simulation framework
+- Vehicle mobility processes
+- Fog resources with queue management
+- Network simulation with real bandwidth traces
+- End-to-end execution verified
+- Real-time metrics collection
 
-**Baseline Systems ✅ IMPLEMENTED**
+**Baseline Systems - IMPLEMENTED**
 
-- ✅ Baseline 1: Greedy nearest fog
-- ✅ Baseline 2: Random offloading
-- ✅ Baseline 3: Cloud-only strategy
-- ✅ Comparative performance analysis
+- Baseline 1: Greedy nearest fog
+- Baseline 2: Random offloading
+- Baseline 3: Cloud-only strategy
+- Comparative performance analysis
 
-**Results & Analysis ✅ READY**
+**Results & Analysis - READY**
 
-- ✅ Latency comparison plots
-- ✅ Energy consumption analysis
-- ✅ Deadline satisfaction metrics
-- ✅ IEEE-format figures and tables
+- Latency comparison plots
+- Energy consumption analysis
+- Deadline satisfaction metrics
+- IEEE-format figures and tables
 
 **Total Development:** Complete  
 **System Status:** Production Ready
@@ -591,7 +591,9 @@ bandwidth = trace.get_bandwidth_at_time(5.3)
 
 ```bash
 cd implementation
-python main.py
+python app.py proposed
+# in a second terminal
+npm --prefix frontend start
 ```
 
 **Expected Output (~25 seconds):**
@@ -600,12 +602,12 @@ python main.py
 PROFESSIONAL SMART CITY VEHICULAR TASK OFFLOADING SYSTEM
 Istanbul Urban Network
 
-📍 Generating CARLA vehicle trajectories...
-📡 Loading network bandwidth traces...
-🎯 Running NSGA-II optimization...
-✅ Generated 500 training pairs
-✅ Agent 1 pre-training complete
-✅ Agent 2 initialised
+Generating CARLA vehicle trajectories...
+Loading network bandwidth traces...
+Running NSGA-II optimization...
+[OK] Generated 500 training pairs
+[OK] Agent 1 pre-training complete
+[OK] Agent 2 initialised
 ```
 
 ### Generated Files
@@ -615,32 +617,24 @@ After execution:
 - `results/carla_trajectories.csv` — 10,000 trajectory points
 - `results/network_bandwidth.csv` — 1,000+ bandwidth samples
 
-### Testing Individual Components
+### Testing Core Services
 
-**Test CARLA trajectories:**
+**Test backend health:**
 
-```python
-from datasets import TrajectoryGenerator
-gen = TrajectoryGenerator(num_vehicles=5)
-traj = gen.generate_fleet()
-print(f"Generated {len(traj)} trajectories")
+```bash
+curl http://127.0.0.1:5000/api/health
 ```
 
-**Test YOLOv5 latencies:**
+**Test frontend:**
 
-```python
-from datasets import RealisticTaskGenerator
-task_gen = RealisticTaskGenerator(model='yolov5s')
-latency = task_gen.get_latency(device='gpu')
-print(f"Latency: {latency}ms")
+```bash
+curl http://localhost:3000
 ```
 
-**Test Network traces:**
+**Test WebSocket port:**
 
-```python
-from datasets import NetworkBandwidthTrace
-trace = NetworkBandwidthTrace('urban_4g')
-print(f"Mean BW: {trace.bandwidth_mbps.mean():.1f} Mbps")
+```bash
+python -c "import socket; s=socket.socket(); s.connect(('127.0.0.1', 8765)); print('WS OK')"
 ```
 
 ---
@@ -653,7 +647,7 @@ print(f"Mean BW: {trace.bandwidth_mbps.mean():.1f} Mbps")
 
 ```bash
 pip install -r requirements.txt
-python main.py
+python app.py proposed
 ```
 
 ### Issue: Slow execution
@@ -671,7 +665,7 @@ N_OFFLINE_BATCHES = 10      # Instead of 50
 
 ```bash
 mkdir results
-python main.py
+python app.py proposed
 ```
 
 ### Issue: Memory overflow
