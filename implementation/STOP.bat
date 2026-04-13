@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableExtensions EnableDelayedExpansion
 
 set "ROOT=%~dp0"
 set "LOG=%ROOT%shutdown.log"
@@ -18,34 +18,36 @@ echo  SMART CITY SYSTEM - SHUTDOWN
 echo ============================================================================
 echo.
 
-echo [1/5] Stopping tracked backend/frontend processes...
+echo [1/3] Stopping tracked backend/frontend processes...
 if exist "%BACKEND_PID_FILE%" (
     set /p BACKEND_PID=<"%BACKEND_PID_FILE%"
-    if not "%BACKEND_PID%"=="" taskkill /PID %BACKEND_PID% /T /F > nul 2>&1
+    if not "!BACKEND_PID!"=="" (
+        echo [INFO] Stopping backend PID !BACKEND_PID!
+        echo [%DATE% %TIME%] Stopping backend PID !BACKEND_PID! >> "%LOG%"
+        taskkill /PID !BACKEND_PID! /T /F >> "%LOG%" 2>&1
+        if errorlevel 1 (
+            echo [WARN] Failed to stop backend PID !BACKEND_PID! - see shutdown.log
+            echo [%DATE% %TIME%] WARN backend taskkill failed PID !BACKEND_PID! >> "%LOG%"
+        )
+    )
     del /f /q "%BACKEND_PID_FILE%" > nul 2>&1
 )
 if exist "%FRONTEND_PID_FILE%" (
     set /p FRONTEND_PID=<"%FRONTEND_PID_FILE%"
-    if not "%FRONTEND_PID%"=="" taskkill /PID %FRONTEND_PID% /T /F > nul 2>&1
+    if not "!FRONTEND_PID!"=="" (
+        echo [INFO] Stopping frontend PID !FRONTEND_PID!
+        echo [%DATE% %TIME%] Stopping frontend PID !FRONTEND_PID! >> "%LOG%"
+        taskkill /PID !FRONTEND_PID! /T /F >> "%LOG%" 2>&1
+        if errorlevel 1 (
+            echo [WARN] Failed to stop frontend PID !FRONTEND_PID! - see shutdown.log
+            echo [%DATE% %TIME%] WARN frontend taskkill failed PID !FRONTEND_PID! >> "%LOG%"
+        )
+    )
     del /f /q "%FRONTEND_PID_FILE%" > nul 2>&1
 )
 echo [OK] Tracked process stop attempted.
 
-echo [2/5] Stopping titled service terminals (fallback)...
-for %%T in ("SmartCity Backend" "SmartCity Frontend") do (
-    taskkill /FI "WINDOWTITLE eq %%~T" /FI "IMAGENAME eq cmd.exe" /T /F > nul 2>&1
-)
-echo [OK] Terminal fallback stop attempted.
-
-echo [3/5] Releasing common platform ports (3000, 5000, 8765)...
-for %%P in (3000 5000 8765) do (
-    for /f "tokens=5" %%A in ('netstat -ano ^| findstr /R /C:":%%P .*LISTENING"') do (
-        taskkill /PID %%A /F > nul 2>&1
-    )
-)
-echo [OK] Port cleanup completed.
-
-echo [4/5] Stopping optional Docker infrastructure...
+echo [2/3] Stopping optional Docker infrastructure...
 docker --version > nul 2>&1
 if errorlevel 1 (
     echo [WARN] Docker not found. Skipping infrastructure shutdown.
@@ -67,7 +69,7 @@ if errorlevel 1 (
     )
 )
 
-echo [5/5] Done.
+echo [3/3] Done.
 echo.
 echo Shutdown complete.
 echo Log: %LOG%

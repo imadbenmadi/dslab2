@@ -100,6 +100,8 @@ class UnifiedSmartCityApp:
         self.logger = setup_application_logger("smart_city", "results/logs")
         self.json_event_log_path = "results/logs/events.jsonl"
         self.runtime_events = deque(maxlen=500)
+
+        self.baseline_tracker = get_baseline_tracker()
         
         # Start tracking for this system type
         self.baseline_tracker.start_run(self.system_type)
@@ -136,7 +138,6 @@ class UnifiedSmartCityApp:
 
         # Agent analytics for UI observability
         self.agent_history = deque(maxlen=300)
-        self.baseline_tracker = get_baseline_tracker()
         # Will be populated with real data from tracker
         self.nsga_summary = {}
         self.agent_stats = {
@@ -1343,9 +1344,6 @@ class UnifiedSmartCityApp:
             self._log_event("error", "simulation_failed", error=str(e))
 
     def start(self):
-        # Optional offline behavioral cloning bootstrap before live simulation.
-        self._bootstrap_behavioral_cloning()
-
         # Start websocket
         self._initialize_websocket()
         self.ws_server.run_in_thread()
@@ -1364,6 +1362,10 @@ class UnifiedSmartCityApp:
         )
         api_thread.start()
         time.sleep(1)
+
+        # Optional offline behavioral cloning bootstrap before live simulation.
+        # Run this after API/WS start so the dashboard can connect immediately.
+        self._bootstrap_behavioral_cloning()
 
         # Start simulation
         self._api_start_simulation(self.system_type)

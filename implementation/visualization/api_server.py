@@ -44,7 +44,14 @@ class SimulationState:
 
 
 sim_state = SimulationState()
-_storage = get_data_store()
+_storage = None
+
+
+def _get_storage():
+    global _storage
+    if _storage is None:
+        _storage = get_data_store()
+    return _storage
 
 # Runtime callbacks injected by app.py to control live simulation worker.
 _start_callback = None
@@ -79,7 +86,7 @@ def health():
     return jsonify({
         'status': 'ok',
         'timestamp': datetime.now().isoformat(),
-        'storage': _storage.status(),
+        'storage': _get_storage().status(),
     })
 
 
@@ -92,7 +99,7 @@ def get_status():
 @app.route('/api/metrics/current', methods=['GET'])
 def get_current_metrics():
     """Get latest metrics"""
-    latest = _storage.read_latest_metric()
+    latest = _get_storage().read_latest_metric()
     if latest:
         return jsonify(latest)
 
@@ -107,7 +114,7 @@ def get_current_metrics():
 def get_metrics_history():
     """Get metrics history"""
     limit = request.args.get('limit', default=50, type=int)
-    persisted = _storage.read_metrics_history(limit=limit)
+    persisted = _get_storage().read_metrics_history(limit=limit)
     if persisted:
         return jsonify(persisted)
 
@@ -118,7 +125,7 @@ def get_metrics_history():
 @app.route('/api/evaluation/summary', methods=['GET'])
 def get_evaluation_summary():
     """Return richer statistical summary over the currently collected metrics history."""
-    data = _storage.read_metrics_history(limit=500)
+    data = _get_storage().read_metrics_history(limit=500)
     if not data:
         data = list(metrics_history)
 
@@ -206,7 +213,7 @@ def reset_simulation():
     sim_state.current_time = 0.0
     sim_state.progress = 0.0
     metrics_history.clear()
-    _storage.clear_runtime()
+    _get_storage().clear_runtime()
     response = {'message': 'Simulation reset'}
     if _reset_callback:
         callback_out = _reset_callback()
@@ -227,7 +234,7 @@ def get_logic_snapshot():
 def get_tasks_recent():
     """Get recent processed task events."""
     limit = request.args.get('limit', default=100, type=int)
-    persisted = _storage.read_recent_tasks(limit=limit)
+    persisted = _get_storage().read_recent_tasks(limit=limit)
     if persisted:
         return jsonify({'items': persisted})
 
@@ -240,7 +247,7 @@ def get_tasks_recent():
 def get_logs_recent():
     """Get recent structured runtime logs."""
     limit = request.args.get('limit', default=100, type=int)
-    persisted = _storage.read_recent_logs(limit=limit)
+    persisted = _get_storage().read_recent_logs(limit=limit)
     if persisted:
         return jsonify({'items': persisted})
 
@@ -260,7 +267,7 @@ def get_analytics_window():
     else:
         hours = request.args.get('hours', default=1, type=int)
 
-    result = _storage.read_analytics_window(hours=hours)
+    result = _get_storage().read_analytics_window(hours=hours)
     return jsonify(result), 200
 
 
@@ -276,8 +283,8 @@ def get_analytics_by_vehicle(vehicle_id: str):
         hours = request.args.get('hours', default=24, type=int)
 
     limit = request.args.get('limit', default=200, type=int)
-    summary = _storage.read_vehicle_analytics_window(vehicle_id=vehicle_id, hours=hours)
-    items = _storage.read_task_window(hours=hours, limit=limit, vehicle_id=vehicle_id)
+    summary = _get_storage().read_vehicle_analytics_window(vehicle_id=vehicle_id, hours=hours)
+    items = _get_storage().read_task_window(hours=hours, limit=limit, vehicle_id=vehicle_id)
     return jsonify({'summary': summary, 'items': items}), 200
 
 
@@ -354,7 +361,7 @@ def get_system_info():
 @app.route('/api/export', methods=['GET'])
 def export_data():
     """Export current metrics history as CSV"""
-    data = _storage.read_metrics_history(limit=5000)
+    data = _get_storage().read_metrics_history(limit=5000)
     if not data:
         data = list(metrics_history)
 
@@ -525,17 +532,17 @@ def serve_react(path):
 def add_metrics(metrics_dict: Dict[str, Any]):
     """Add metrics to history (called from simulation)"""
     metrics_history.append(metrics_dict)
-    _storage.write_metric(metrics_dict)
+    _get_storage().write_metric(metrics_dict)
 
 
 def add_task_event(task_event: Dict[str, Any]):
     """Persist a task event for API retrieval."""
-    _storage.write_task_event(task_event)
+    _get_storage().write_task_event(task_event)
 
 
 def add_runtime_log(log_event: Dict[str, Any]):
     """Persist runtime structured logs for API retrieval."""
-    _storage.write_runtime_log(log_event)
+    _get_storage().write_runtime_log(log_event)
 
 
 def update_simulation_time(current_time: float):

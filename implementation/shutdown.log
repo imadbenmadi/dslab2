@@ -1,5 +1,21 @@
  
-[Tue 03/31/2026 17:28:20.38] STOP.bat invoked 
-time="2026-03-31T17:28:21+02:00" level=warning msg="C:\\Users\\imadb\\OneDrive\\Bureau\\dslab2\\implementation\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
-error during connect: Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/v1.47/containers/json?all=1&filters=%7B%22label%22%3A%7B%22com.docker.compose.config-hash%22%3Atrue%2C%22com.docker.compose.oneoff%3DFalse%22%3Atrue%2C%22com.docker.compose.project%3Dimplementation%22%3Atrue%7D%7D": open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
-[Tue 03/31/2026 17:28:21.09] docker compose down failed 
+[Tue 04/14/2026  0:30:54.93] STOP.bat invoked 
+[Tue 04/14/2026  0:30:54.94] Stopping backend PID 5200 
+SUCCESS: The process with PID 22892 (child process of PID 5200) has been terminated.
+SUCCESS: The process with PID 5200 (child process of PID 22652) has been terminated.
+[Tue 04/14/2026  0:30:55.10] Stopping frontend PID 2476 
+SUCCESS: The process with PID 19408 (child process of PID 2476) has been terminated.
+SUCCESS: The process with PID 20064 (child process of PID 2476) has been terminated.
+SUCCESS: The process with PID 2476 (child process of PID 18736) has been terminated.
+time="2026-04-14T00:30:55+02:00" level=warning msg="C:\\Users\\imed\\Desktop\\dslab2\\implementation\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+ Container smartcity-timescaledb  Stopping
+ Container smartcity-redis  Stopping
+ Container smartcity-redis  Stopped
+ Container smartcity-redis  Removing
+ Container smartcity-redis  Removed
+ Container smartcity-timescaledb  Stopped
+ Container smartcity-timescaledb  Removing
+ Container smartcity-timescaledb  Removed
+ Network implementation_default  Removing
+ Network implementation_default  Removed
+[Tue 04/14/2026  0:30:55.27] docker compose down OK 

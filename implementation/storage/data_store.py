@@ -32,6 +32,9 @@ class DataStore:
         self._stop_event = threading.Event()
         self._writer_thread: Optional[threading.Thread] = None
 
+        self._redis_connect_timeout_s = max(0.1, float(os.getenv("REDIS_CONNECT_TIMEOUT_S", "1.0")))
+        self._pg_connect_timeout_s = max(1, int(float(os.getenv("POSTGRES_CONNECT_TIMEOUT_S", "2"))))
+
         self._init_redis()
         self._init_postgres()
         self._start_writer_thread_if_enabled()
@@ -42,10 +45,19 @@ class DataStore:
         try:
             import redis  # type: ignore
 
-            client = redis.Redis.from_url(self.redis_url, decode_responses=True)
+            client = redis.Redis.from_url(
+                self.redis_url,
+                decode_responses=True,
+                socket_connect_timeout=self._redis_connect_timeout_s,
+                socket_timeout=self._redis_connect_timeout_s,
+            )
             client.ping()
             self._redis = client
             self._redis_ok = True
+        except KeyboardInterrupt:
+            # Treat as "infra unavailable"; don't abort the whole process.
+            self._redis = None
+            self._redis_ok = False
         except Exception:
             self._redis = None
             self._redis_ok = False
@@ -53,7 +65,7 @@ class DataStore:
     def _connect_pg(self):
         import psycopg2  # type: ignore
 
-        return psycopg2.connect(self.pg_dsn)
+        return psycopg2.connect(self.pg_dsn, connect_timeout=self._pg_connect_timeout_s)
 
     def _init_postgres(self) -> None:
         if not self.enable_postgres or not self.pg_dsn:
@@ -122,6 +134,9 @@ class DataStore:
                     )
                 conn.commit()
             self._pg_ok = True
+        except KeyboardInterrupt:
+            # Treat as "infra unavailable"; don't abort the whole process.
+            self._pg_ok = False
         except Exception:
             # Keep simulation running even if DB is not provisioned.
             self._pg_ok = False
