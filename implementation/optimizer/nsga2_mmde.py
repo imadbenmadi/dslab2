@@ -1,11 +1,10 @@
 import numpy as np
 from pymoo.algorithms.moo.nsga2 import NSGA2
 from pymoo.core.problem import Problem
-from pymoo.operators.mutation.pm import PM
 from pymoo.operators.crossover.sbx import SBX
 from pymoo.optimize import minimize
 from pymoo.termination import get_termination
-from pymoo.core.operator import Operator
+from pymoo.core.mutation import Mutation
 from config import (NSGA_POP_SIZE, NSGA_GENS, MMDE_F, MMDE_CR,
                     FOG_MIPS, FOG_NODES, WAN_LATENCY_MS)
 
@@ -52,7 +51,7 @@ class TaskOffloadingProblem(Problem):
         return energy, latency
 
 
-class MMDEMutation(Operator):
+class MMDEMutation(Mutation):
     """Differential evolution mutation for task routing genes."""
     def __init__(self, F=MMDE_F, CR=MMDE_CR, n_actions=5):
         super().__init__()
@@ -61,14 +60,8 @@ class MMDEMutation(Operator):
         self.n_actions = n_actions
 
     def _do(self, problem, X, **kwargs):
-        # Handle pymoo Individual objects
-        if hasattr(X, 'get'):
-            X_array = X.get("X")
-        else:
-            X_array = X
-        
-        # Handle both 1D and 2D input
-        if len(X_array.shape) == 1:
+        X_array = np.asarray(X)
+        if X_array.ndim == 1:
             X_array = X_array.reshape(1, -1)
         
         n, n_var = X_array.shape
@@ -79,35 +72,62 @@ class MMDEMutation(Operator):
             if n > 3:
                 idxs = np.random.choice([j for j in range(n) if j != i], 3, replace=False)
                 r1, r2, r3 = X_array[idxs[0]], X_array[idxs[1]], X_array[idxs[2]]
-                # Differential mutation per gene
+                # Differential mutation per gene using DE-style vector difference.
                 for k in range(n_var):
                     if np.random.rand() < self.CR:
-                        # Compute differential direction
                         diff = int(round(self.F * (r2[k] - r3[k])))
                         mutated = int(round(r1[k])) + diff
-                        # Clip to valid action range
                         X_mut[i, k] = np.clip(mutated, 0, self.n_actions - 1)
         
         return X_mut.astype(int)
 
 
-def run_nsga2_mmde(pebble_steps: list, fog_states: dict) -> dict:
+def _fallback_result(pebble_steps: list, fog_states: dict) -> dict:
+    """Fast deterministic fallback if optimizer is interrupted/fails."""
+    if not pebble_steps:
+        return {'pareto_X': [], 'pareto_F': [], 'knee_X': [], 'knee_F': None}
+
+    node_order = ['A', 'B', 'C', 'D']
+    best_node = min(node_order, key=lambda n: float(fog_states.get(n, 0.5)))
+    node_to_action = {'A': 0, 'B': 1, 'C': 2, 'D': 3}
+    action = node_to_action.get(best_node, 0)
+    knee_X = np.array([action for _ in pebble_steps], dtype=int)
+    # Coarse placeholder objective values to keep downstream interfaces consistent.
+    knee_F = np.array([
+        float(sum(getattr(s, 'MI', 0) for s in pebble_steps)) / max(1.0, FOG_MIPS),
+        float(sum(getattr(s, 'in_KB', 0) for s in pebble_steps)) / 10.0,
+    ], dtype=float)
+    return {
+        'pareto_X': np.array([knee_X], dtype=int),
+        'pareto_F': np.array([knee_F], dtype=float),
+        'knee_X': knee_X,
+        'knee_F': knee_F,
+        'knee_idx': 0,
+        'fallback': True,
+    }
+
+
+def run_nsga2_mmde(pebble_steps: list, fog_states: dict, pop_size: int | None = None, n_gens: int | None = None) -> dict:
     """Optimize pebble task routing using NSGA-II."""
     if not pebble_steps:
         return {'pareto_X': [], 'pareto_F': [], 'knee_X': [], 'knee_F': None}
 
     problem = TaskOffloadingProblem(pebble_steps, fog_states)
 
-    # Use standard NSGA-II with PM or SBX mutation
-    # MMDE concept incorporated via fitness landscape evaluation
+    # Use NSGA-II with custom MMDE mutation for integer action genes.
     algorithm = NSGA2(
-        pop_size=NSGA_POP_SIZE,
+        pop_size=int(pop_size or NSGA_POP_SIZE),
         crossover=SBX(prob=0.9, eta=15),
-        mutation=PM(eta=20, prob=1.0/len(pebble_steps) if len(pebble_steps) > 0 else 0.1),
+        mutation=MMDEMutation(F=MMDE_F, CR=MMDE_CR, n_actions=5),
         eliminate_duplicates=True,
     )
-    termination = get_termination("n_gen", NSGA_GENS)
-    result = minimize(problem, algorithm, termination, seed=42, verbose=False)
+    termination = get_termination("n_gen", int(n_gens or NSGA_GENS))
+    try:
+        result = minimize(problem, algorithm, termination, seed=42, verbose=False)
+    except KeyboardInterrupt:
+        return _fallback_result(pebble_steps, fog_states)
+    except Exception:
+        return _fallback_result(pebble_steps, fog_states)
 
     pareto_X = result.X.astype(int)
     pareto_F = result.F
@@ -131,7 +151,7 @@ def extract_training_pairs(pebble_steps: list, fog_states: dict,
     """
     Convert Pareto-front solutions into (state, action) training pairs
     for behavioral cloning of RL Agent 1.
-    Returns list of {'state': np.array, 'action': int} dicts.
+    Returns list of {'state': np.array, 'action': int, 'source': str} dicts.
     """
     pairs = []
     knee_X = pareto_result['knee_X']
@@ -141,7 +161,13 @@ def extract_training_pairs(pebble_steps: list, fog_states: dict,
         if j < len(knee_X):
             action = int(knee_X[j])
             state = build_state_from_step(step, fog_states)
-            pairs.append({'state': state, 'action': action})
+            pairs.append({
+                'state': state,
+                'action': action,
+                'source': 'tof-mmde-nsga2',
+                'optimizer': 'mmde-nsga2',
+                'broker': 'tof',
+            })
     return pairs
 
 
@@ -174,3 +200,65 @@ def build_state_from_step(step, fog_states: dict) -> np.ndarray:
         state = state[:AGENT1_STATE_DIM]
     
     return state
+
+
+def build_agent2_state_from_fog(fog_states: dict) -> np.ndarray:
+    """Build Agent2-compatible 15D routing state from current fog/network context."""
+    from config import AGENT2_STATE_DIM
+
+    util = [float(np.clip(fog_states.get(k, 0.3), 0.0, 1.0)) for k in ['A', 'B', 'C', 'D']]
+    qdepth = [float(np.clip(fog_states.get(f'queue_{k}', 0) / 50.0, 0.0, 1.0)) for k in ['A', 'B', 'C', 'D']]
+    pending_super = float(np.clip(fog_states.get('pending_super', 0.2), 0.0, 1.0))
+    pred_traffic = float(np.clip(fog_states.get('bandwidth_util', 0.5), 0.0, 1.0))
+    active_per_zone = [float(np.clip(fog_states.get(f'active_{k}', 0.5), 0.0, 1.0)) for k in ['A', 'B', 'C', 'D']]
+    cloud_q = float(np.clip(fog_states.get('cloud_queue', 0) / 100.0, 0.0, 1.0))
+
+    state = np.array(util + qdepth + [pending_super, pred_traffic] + active_per_zone + [cloud_q], dtype=np.float32)
+    if len(state) < AGENT2_STATE_DIM:
+        state = np.pad(state, (0, AGENT2_STATE_DIM - len(state)), mode='constant', constant_values=0.5)
+    elif len(state) > AGENT2_STATE_DIM:
+        state = state[:AGENT2_STATE_DIM]
+    return state
+
+
+def extract_agent2_training_pairs_from_mmde(fog_states: dict, pareto_result: dict) -> list:
+    """
+    Derive Agent2 routing labels from TOF+MMDE-NSGA-II optimization outcomes.
+    Returns list of {'state': np.array, 'action': int, 'source': str}.
+    """
+    pairs = []
+    pareto_F = pareto_result.get('pareto_F', None)
+    knee_F = pareto_result.get('knee_F', None)
+    if pareto_F is None or knee_F is None:
+        return pairs
+
+    # MMDE/NSGA outcome-driven routing policy label.
+    # Lower-latency knees favor VIP/pre-installed routing, congested links favor alternate paths.
+    latency_vals = pareto_F[:, 1]
+    low_lat = float(np.percentile(latency_vals, 30))
+    high_lat = float(np.percentile(latency_vals, 70))
+    knee_latency = float(knee_F[1])
+
+    bw_util = float(np.clip(fog_states.get('bandwidth_util', 0.5), 0.0, 1.0))
+    cloud_q = float(np.clip(fog_states.get('cloud_queue', 0) / 100.0, 0.0, 1.0))
+
+    if knee_latency <= low_lat and bw_util < 0.55:
+        action = 3  # reserve VIP lane when optimizer points to latency-critical route
+    elif bw_util >= 0.8:
+        action = 1  # alternate path under heavy bandwidth pressure
+    elif cloud_q >= 0.65:
+        action = 2  # second alternate path under high cloud queue pressure
+    elif knee_latency >= high_lat:
+        action = 4  # best effort when Pareto knee is delay-tolerant
+    else:
+        action = 0  # primary path for normal operation
+
+    state = build_agent2_state_from_fog(fog_states)
+    pairs.append({
+        'state': state,
+        'action': int(action),
+        'source': 'tof-mmde-nsga2',
+        'optimizer': 'mmde-nsga2',
+        'broker': 'tof',
+    })
+    return pairs

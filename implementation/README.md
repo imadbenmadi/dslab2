@@ -1,401 +1,225 @@
-# Smart City Vehicular Task Offloading System (Istanbul Urban Network)
+# Smart City Vehicular Task Offloading System
 
-**IoT–Fog–Cloud task offloading for vehicular object detection** using a hybrid of **TOF-broker classification**, **NSGA-II multi-objective optimization**, and **Deep Q-Network (DQN)** agents.
+Production-grade smart city simulation with three distributed microservices. Features real-time React dashboard, TOF+MMDE-NSGA-II optimization, and mTLS-secured inter-service communication.
 
-This README merges the content previously split across `PROJECT_SUMMARY.txt` and `explanation.md` into a single, coherent technical document.
+## Architecture
 
----
+**New:** Distributed microservices with NATS messaging and mTLS
 
-## Contents
-
-1. [Executive summary](#executive-summary)
-2. [System architecture](#system-architecture)
-3. [Task model (YOLO-style DAG)](#task-model-yolo-style-dag)
-4. [Core algorithms](#core-algorithms)
-5. [Real-world datasets (synthetic generators)](#real-world-datasets-synthetic-generators)
-6. [Project structure](#project-structure)
-7. [Quick start (offline pre-training)](#quick-start-offline-pre-training)
-8. [Pre-training & validation](#pre-training--validation)
-9. [Module reference (examples)](#module-reference-examples)
-10. [Configuration](#configuration)
-11. [Metrics](#metrics)
-12. [Expected results (targets)](#expected-results-targets)
-13. [Implementation status (accurate to this repo)](#implementation-status-accurate-to-this-repo)
-14. [Next steps](#next-steps)
-15. [Troubleshooting](#troubleshooting)
-16. [References](#references)
-17. [License](#license)
-
----
-
-## Executive summary
-
-This project models **smart-city vehicular object detection** as a **multi-step DAG** that must meet a strict end-to-end deadline (default: **200ms**). Vehicles produce tasks at camera rate, and the system decides where to execute offloadable DAG steps:
-
-- **IoT layer:** vehicles
-- **Fog layer:** 4 edge nodes (Istanbul districts)
-- **Cloud layer:** central server
-
-Key idea: split steps into **boulders** vs **pebbles** using TOF (execution-cost threshold), then route pebbles using **NSGA-II** and train a DQN (Agent 1) via **behavioral cloning**.
-
----
-
-## System architecture
-
-### 3-tier computing stack
-
-```
-IoT (Vehicles)
-  ↓  4G/5G link
-Fog (4 nodes)
-  ↓  backbone
-Cloud (1 node)
+```text
+┌────────────────────┐         ┌──────────────────┐         ┌───────────────────┐
+│ Vehicle Service    │         │  Fog Service     │         │ Cloud Service     │
+│ • Agent1 (place)   │◄────────┤ • Agent2 (route) │◄────────┤ • Flask API       │
+│ • TOF lite         │  NATS   │ • SDN Controller │  NATS   │ • WebSocket       │
+│ • 50 Vehicles      │  mTLS   │ • TOF broker     │  mTLS   │ • Analytics       │
+└────────────────────┘         └──────────────────┘         └───────────────────┘
 ```
 
-### Istanbul topology (from `config.py`)
+See [DISTRIBUTED_ARCHITECTURE.md](DISTRIBUTED_ARCHITECTURE.md) for detailed docs.
 
-- Fog-A: Besiktas at (200, 500)
-- Fog-B: Sisli at (500, 200)
-- Fog-C: Kadikoy at (800, 500)
-- Fog-D: Uskudar at (500, 800)
+## Quick Start (Recommended: Distributed Services)
 
-Coverage radius: 250m (grid is 1000m × 1000m).
-
----
-
-## Task model (YOLO-style DAG)
-
-Object detection is modeled as a 5-step pipeline (see `config.py -> DAG_STEPS`):
-
-1. Capture + compress (device)
-2. Pre-process
-3. Feature extract
-4. Object classify
-5. Alert generate
-
-End-to-end requirement: `TOTAL_DEADLINE_MS = 200`.
-
----
-
-## Core algorithms
-
-### 1) TOF Broker (boulder / pebble classification)
-
-The TOF broker computes **execution cost**:
-
-```
-EC = MI / FOG_MIPS   (seconds)
-```
-
-Classification rule (default threshold: `EC_THRESHOLD = 1.0`):
-
-- If `EC ≥ 1.0s` → **boulder** → route to **cloud**
-- Else → **pebble** → optimize offloading among fog/cloud actions
-
-Implementation: `broker/tof_broker.py`.
-
-### 2) Multi-objective optimization (NSGA-II)
-
-For pebbles, NSGA-II optimizes two objectives:
-
-1. Minimize **energy**
-2. Minimize **latency**
-
-Decision variables: per-step discrete action in `{Fog-A, Fog-B, Fog-C, Fog-D, Cloud}`.
-
-Implementation: `optimizer/nsga2_mmde.py`.
-
-### 3) Agent 1 (DQN) — task placement
-
-- State: 13-dimensional vector built in `optimizer/nsga2_mmde.py::build_state_from_step()`
-- Action space: 5 discrete destinations (Fog-A/B/C/D or Cloud)
-- Offline pre-training: behavioral cloning from NSGA-II knee-point solution
-
-Implementation: `agents/agent1.py` and `agents/dqn.py`.
-
-### 4) Agent 2 (DQN) — SDN routing (scaffold)
-
-Agent 2 is implemented as a DQN policy with a routing action space:
-
-`PRIMARY, ALT1, ALT2, VIP_RESERVE, BEST_EFFORT`
-
-Implementation: `agents/agent2.py`.
-
-### 5) Mobility + handoff prediction
-
-The trajectory predictor estimates:
-
-- `T_exit`: time until a vehicle leaves the current fog coverage
-- `T_exec`: execution time under fog load
-
-Mode selection:
-
-- `DIRECT` if `T_exec < T_exit`
-- else `PROACTIVE`
-
-Implementation: `mobility/handoff.py`.
-
----
-
-## Real-world datasets (synthetic generators)
-
-This repository integrates “real-world inspired” datasets via generators in `datasets.py`:
-
-### CARLA-like trajectories
-
-- Generates waypoints sampled at 10Hz on a 1000m × 1000m grid
-- Exports to: `results/carla_trajectories.csv`
-
-### CRAWDAD-like bandwidth traces
-
-- Generates time-series bandwidth for `urban_4g`, `edge_wifi`, and `backbone`
-- Exports to: `results/network_bandwidth.csv`
-
-### YOLOv5-like latency benchmarks
-
-`datasets.py` contains a benchmark table for YOLOv5 variants (CPU/GPU/Edge TPU) used to parameterize task generation.
-
----
-
-## Project structure
-
-```
-implementation/
-├── config.py
-├── main.py
-├── datasets.py
-│
-├── environment/
-│   ├── task.py
-│   ├── vehicle.py
-│   ├── fog_node.py
-│   ├── cloud.py
-│   └── city.py
-│
-├── broker/
-│   └── tof_broker.py
-│
-├── optimizer/
-│   └── nsga2_mmde.py
-│
-├── agents/
-│   ├── dqn.py
-│   ├── agent1.py
-│   └── agent2.py
-│
-├── mobility/
-│   └── handoff.py
-│
-├── simulation/
-│   ├── runner.py
-│   └── env.py
-│
-├── baselines/
-│   ├── baseline1.py
-│   ├── baseline2.py
-│   └── baseline3.py
-│
-├── sdn/
-│   └── controller.py
-│
-└── results/
-    ├── metrics.py
-    ├── plots.py
-    ├── carla_trajectories.csv
-    └── network_bandwidth.csv
-```
-
----
-
-## Quick start (offline pre-training)
-
-### Install
+### 1. Install dependencies
 
 ```bash
-cd implementation
 pip install -r requirements.txt
+cd frontend && npm install && cd ..
 ```
 
-### Run offline pre-training
+### 1.1 Optional: configure via environment variables
 
 ```bash
-python main.py
+# Linux/macOS
+cp .env.example .env
+
+# Windows PowerShell
+Copy-Item .env.example .env
 ```
 
-What it does:
+Update `.env` values as needed. The app loads `.env` automatically via `config.py`.
 
-1. Generates CARLA-like trajectories and exports CSV
-2. Generates bandwidth traces and exports CSV
-3. Runs NSGA-II batches on realistic task samples
-4. Produces training pairs and pre-trains Agent 1
+### 1.2 Optional: start Redis + TimescaleDB (one command)
 
----
-
-## Pre-training & validation
-
-### NSGA-II offline batches
-
-The offline pre-training loop in `main.py` runs for `n_batches` (default: 50). Each batch builds a small set of pebble steps (currently capped to 10) and runs NSGA-II to produce a knee-point solution.
-
-Training pairs:
-
-- Approx. `n_batches × N_steps_per_batch`
-- With the current defaults in `main.py`, this is typically around `50 × 10 = 500` pairs.
-
-### Behavioral cloning (Agent 1)
-
-After pairs are generated, Agent 1 is trained with supervised learning (`CrossEntropyLoss`) for a small number of epochs (default in `main.py`: 3).
-
-Sanity checks included in the current pipeline:
-
-- CSV exports are created under `results/`
-- The optimizer runs end-to-end and returns Pareto solutions
-- Agent 1 can train on the extracted (state, action) pairs
-
----
-
-## Module reference (examples)
-
-### Run TOF classification on a DAG task
-
-```python
-from broker.tof_broker import TOFBroker
-from environment.task import generate_dag_task
-
-task = generate_dag_task(task_id="t1", vehicle_id="vehicle_000", sim_time=0.0, spatial_tag={})
-broker = TOFBroker()
-result = broker.process_dag(task)
-print(len(result["boulders"]), len(result["pebbles"]))
+```powershell
+./scripts/start_infra.ps1
 ```
 
-### Run NSGA-II optimization and extract training pairs
+Equivalent Docker command:
 
-```python
-import numpy as np
-from optimizer.nsga2_mmde import run_nsga2_mmde, extract_training_pairs
-from environment.task import DAGStep
-from config import FOG_MIPS
-
-fog_states = {"A": 0.3, "B": 0.4, "C": 0.35, "D": 0.25, "bandwidth_util": 0.5}
-pebble_steps = [
-  DAGStep(step_id=3, MI=2000, in_KB=50, out_KB=30, name="Feature", deadline_ms=80),
-]
-pebble_steps[0].ec = pebble_steps[0].MI / FOG_MIPS
-
-pareto = run_nsga2_mmde(pebble_steps, fog_states)
-pairs = extract_training_pairs(pebble_steps, fog_states, pareto)
-print(pairs[0]["state"].shape, pairs[0]["action"])
+```bash
+docker compose up -d redis timescaledb
 ```
 
-### Use Agent 1 to select an offloading action
+### 2. Start NATS broker
 
-```python
-from agents.agent1 import Agent1
+```bash
+# Using Docker (recommended)
+docker run -d --name nats -p 4222:4222 nats:latest
 
-agent = Agent1()
-action = agent.select_action(pairs[0]["state"])
-print("action:", action)
+# Or install locally: https://docs.nats.io/running-a-nats-server/installation
 ```
 
----
+### 3. Start all three services
 
-## Configuration
+```bash
+# This generates mTLS certs and starts vehicle, fog, and cloud services
+python -m services.orchestrator
+```
 
-Key parameters live in `config.py`. Common knobs:
+### 4. Start frontend (separate terminal)
 
-- Compute: `FOG_MIPS`, `CLOUD_MIPS`
-- Network: `BANDWIDTH_MBPS`, `FOG_FOG_BW`, `FOG_CLOUD_BW`, `WAN_LATENCY_MS`, `G5_LATENCY_MS`
-- Optimization: `NSGA_POP_SIZE`, `NSGA_GENS`, `NSGA_BATCH_SIZE`, `N_OFFLINE_BATCHES`
-- Simulation: `SIM_DURATION_S`, `N_VEHICLES`, `TASK_RATE_HZ`
+```bash
+cd frontend
+npm start
+```
 
-For faster runs, reduce `NSGA_POP_SIZE`, `NSGA_GENS`, and the `n_batches` argument passed to `run_offline_pretraining()` in `main.py`.
+### 5. Open dashboard
 
----
-
-## Metrics
-
-Collected metrics are defined in `results/metrics.py` (`SimMetrics`):
-
-- Avg / P95 latency (ms)
-- Avg / total energy (J)
-- Feasibility rate (deadline met fraction)
-- Handoff success rate (when simulated)
-- Fog utilization
-- SDN preinstall hit rate
-- Boulder rate
+- Dashboard: http://localhost:3000
+- Thesis Architecture: http://localhost:3000/thesis
+- API health: http://127.0.0.1:5000/api/health
+- Cloud analytics: http://127.0.0.1:5000/api/cloud/analytics
+- WebSocket (used by React): ws://127.0.0.1:8765
 
 ---
 
-## Expected results (targets)
+## Quick Start (Legacy: Monolithic)
 
-The following are _target outcomes after the full end-to-end simulation, baselines, and evaluation pipeline are implemented_:
+For backward compatibility, the old single-process version is still available:
 
-| System               | Avg latency | Feasibility | Energy | Handoff success |
-| -------------------- | ----------: | ----------: | -----: | --------------: |
-| Baseline 1 (NSGA-II) |      ~850ms |        ~45% | ~0.28J |            ~51% |
-| Baseline 2 (TOF)     |      ~620ms |        ~62% | ~0.22J |            ~54% |
-| Baseline 3 (MMDE)    |      ~480ms |        ~74% | ~0.19J |            ~57% |
-| Proposed system      |  ~210–280ms |     ~88–93% | ~0.16J |         ~91–95% |
+```bash
+python app.py proposed
+```
 
----
-
-## Implementation status (accurate to this repo)
-
-This section reflects the current code in this repository (some modules are scaffolds/placeholders).
-
-### Implemented (Week 1 core)
-
-- ✅ Configuration (`config.py`)
-- ✅ DAG task definition (`environment/task.py`)
-- ✅ TOF broker classification (`broker/tof_broker.py`)
-- ✅ NSGA-II optimizer + training-pair extraction (`optimizer/nsga2_mmde.py`)
-- ✅ DQN network + replay buffer (`agents/dqn.py`)
-- ✅ Agent 1 & Agent 2 DQN implementations (`agents/agent1.py`, `agents/agent2.py`)
-- ✅ Handoff predictor + HTB buffer (`mobility/handoff.py`)
-- ✅ Metrics container (`results/metrics.py`)
-- ✅ Offline pre-training pipeline + dataset exports (`main.py`, `datasets.py`)
-
-### Partially implemented / scaffolds
-
-- ◻ Fog node queueing: `environment/fog_node.py` (`process_task` is not implemented)
-- ◻ Cloud processing: `environment/cloud.py` (`process_task` is not implemented)
-- ◻ SimPy integration: `simulation/runner.py` is a placeholder
-- ◻ Gymnasium env: `simulation/env.py` is a minimal stub
-- ◻ Baselines: `baselines/baseline1.py`, `baseline2.py`, `baseline3.py` are placeholders
-- ◻ Plots: `results/plots.py` is a placeholder
-- ◻ SDN controller abstraction: `sdn/controller.py` has stubbed methods
+**Note:** The monolithic version will be deprecated in future releases. Use distributed services for production.
 
 ---
 
-## Next steps
+## Architecture Details
 
-Planned work (from the project summary):
+### Services
 
-1. Implement SimPy event loop (`simulation/runner.py`)
-2. Implement fog/cloud processing and queueing (`environment/fog_node.py`, `environment/cloud.py`)
-3. Implement baselines and evaluation (`baselines/`, `results/plots.py`)
-4. Integrate SDN controller and connect Agent 2 to routing decisions (`sdn/controller.py`)
+- **vehicle-service** – Vehicles (N=50), Agent1 DQN, TOF-lite broker
+- **fog-service** – Fog nodes (N=4), Agent2 DQN, SDN controller, TOF authoritative
+- **cloud-service** – Flask API, WebSocket, analytics, control plane
 
----
+### Communication
 
-## Troubleshooting
+- **Message Broker:** NATS (native TLS)
+- **Security:** mTLS with auto-generated certificates
+- **Contracts:** Typed event dataclasses with schema validation
+- **Dedup:** UUID-based message tracking per contract event
 
-| Issue                 | Fix                                                      |
-| --------------------- | -------------------------------------------------------- |
-| `ModuleNotFoundError` | `pip install -r requirements.txt`                        |
-| Slow optimization     | Reduce `NSGA_GENS` / `NSGA_POP_SIZE` / number of batches |
-| CSV export fails      | Ensure `implementation/results/` exists                  |
+### Data Flow
 
----
+1. **Vehicle submission:** Vehicle generates task → Publish `VehicleTaskSubmitted`
+2. **Fog decision:** Fog classifies → Publish `FogDecisionMade`
+3. **Analytics:** Cloud aggregates all events → REST API & WebSocket
+4. **Control plane:** Policy sync & feature flags via NATS
 
-## References
+## Project Structure
 
-- CARLA: https://github.com/carla-simulator/carla
-- YOLOv5: https://github.com/ultralytics/yolov5
-- CRAWDAD: https://crawdad.org/
+```text
+implementation/
+├── app.py
+├── config.py
+├── requirements.txt
+├── explanation.md
+├── agents/
+├── baselines/
+├── broker/
+├── environment/
+├── mobility/
+├── optimizer/
+├── results/
+├── sdn/
+├── simulation/
+├── visualization/
+└── frontend/
+```
 
----
+## API Endpoints
 
-## License
+- `GET /api/health`
+- `GET /api/status`
+- `GET /api/metrics/current`
+- `GET /api/metrics/history?limit=50`
+- `POST /api/simulation/start`
+- `POST /api/simulation/stop`
+- `POST /api/simulation/reset`
+- `POST /api/retrain`
+- `GET /api/training-status`
+- `GET /api/config`
+- `GET /api/baselines`
+- `GET /api/system-info`
+- `GET /api/export`
+- `GET /api/evaluation/summary`
+- `GET|POST /api/control/policy`
+- `POST /api/control/features`
+- `POST /api/control/fleet`
+- `GET /api/control/bus`
+- `GET /api/analytics/window?window=1h|24h`
+- `GET /api/analytics/vehicle/<vehicle_id>?window=24h&limit=200`
 
-MIT License (see repository/license information).
+## Data Infrastructure (Redis + Timescale/PostgreSQL)
+
+- Live state feed: Redis
+- Historical storage: TimescaleDB/PostgreSQL
+- Write mode: background batch writer for lower DB overhead under load
+
+Startup:
+
+```powershell
+./scripts/start_infra.ps1
+```
+
+or
+
+```bash
+docker compose up -d redis timescaledb
+```
+
+## Common Issues
+
+### Dashboard opens but Start fails
+
+This was fixed by preventing click event objects from being serialized in `startSimulation`.
+
+### API works but dashboard not loading
+
+Make sure React is running:
+
+```bash
+npm --prefix frontend start
+```
+
+### WebSocket reconnect logs
+
+Occasional reconnect logs are expected during backend restart.
+
+## Documentation
+
+- [explanation.md](explanation.md)
+- [THESIS_ARCHITECTURE_PROPOSAL_V2.md](THESIS_ARCHITECTURE_PROPOSAL_V2.md)
+- [CODEBASE_STRUCTURE.md](CODEBASE_STRUCTURE.md)
+- [explaning v2.md](explaning%20v2.md)
+- [frontend/README.md](frontend/README.md)
+- [visualization/README.md](visualization/README.md)
+- Module READMEs in each folder
+
+## Status
+
+- Backend: working
+- API: working
+- WebSocket: working
+- Frontend: working
+
+## bootstrap
+
+ENABLE_BOOTSTRAP_PRETRAIN: turn this startup pretraining on/off.
+BOOTSTRAP_TASKS: how many synthetic bootstrap DAG tasks to generate.
+BOOTSTRAP_NSGA_POP_SIZE: NSGA population size used only during bootstrap (smaller = faster, less quality).
+BOOTSTRAP_NSGA_GENS: NSGA generations during bootstrap (more = better search, slower startup).
+BOOTSTRAP_MAX_SECONDS: hard time budget; bootstrap stops when this startup time cap is reached.
+In short: it is a controlled startup pretraining step with quality/speed guards, not full training.
+It prevents long blocking at launch while still giving agents a better initial policy.
