@@ -1,0 +1,936 @@
+% ============================================================
+%  LITERATURE REVIEW — Task Offloading in IoT–Fog–Cloud Systems
+%  Deadline: April 15
+%
+%  HOW THIS FILE IS ORGANIZED FOR YOUR TEAM:
+%  - YOUR 10 PAPERS  : Sections 1–5 (Introduction, Background,
+%                      Evolution, State of the Art, Gaps)
+%  - TEAMMATE SLOTS  : Look for  %% TODO-TEAMMATE-X blocks
+%                      Each teammate adds their sections there
+%  - READY TO SUBMIT : If teammates don't edit, it compiles
+%                      cleanly as a complete standalone paper
+% ============================================================
+
+\documentclass[12pt,a4paper]{article}
+
+% ── Packages ─────────────────────────────────────────────────────────────────
+\usepackage[a4paper, margin=2.5cm, headheight=15pt]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{hyperref}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{float}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+\usetikzlibrary{arrows.meta, positioning, shapes.geometric,
+                fit, backgrounds, calc}
+
+% ── Colours ──────────────────────────────────────────────────────────────────
+
+% ── Hyperref ─────────────────────────────────────────────────────────────────
+\hypersetup{
+  colorlinks=false,
+  hidelinks,
+  pdftitle={Task Offloading in IoT-Fog-Cloud: A Literature Review},
+}
+
+% ── Headers ──────────────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\small Task Offloading in IoT--Fog--Cloud: A Literature Review}
+\lhead{\small \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Section formatting ────────────────────────────────────────────────────────
+\titleformat{\section}
+  {\large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}
+  {\normalsize\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+  {\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+% ── Custom environments ───────────────────────────────────────────────────────
+
+
+
+
+% ── TODO box for team collaboration ──────────────────────────────────────────
+
+
+% ── Column types ─────────────────────────────────────────────────────────────
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+% ── Helper command for team notes ─────────────────────────────────────────────
+\newcommand{\teamtodo}[1]{%
+  \begin{quote}\small\textit{\textbf{TEAM NOTE:} #1}\end{quote}
+%
+}
+
+% =============================================================================
+\begin{document}
+% =============================================================================
+
+% ── TITLE PAGE ────────────────────────────────────────────────────────────────
+\begin{titlepage}
+  \centering
+  \vspace*{1.5cm}
+  {\small\textcolor{midblue}{\textsc{Literature Review --- Distributed Systems Lab}}}\\[0.8cm]
+  {\LARGE\bfseries\color{darkblue}
+    Optimized Task Offloading in\\[0.3em]
+    IoT--Fog--Cloud Systems:\\[0.4em]
+    A Comprehensive Literature Review of\\[0.3em]
+    Metaheuristic Optimization, Deep\\[0.3em]
+    Reinforcement Learning, SDN, and\\[0.3em]
+    Mobility-Aware Computation Offloading
+  }\\[1.2cm]
+  \rule{0.55\linewidth}{0.4pt}\\[1.0cm]
+  {\normalsize
+    \textbf{Keywords:} Task offloading, IoT, Fog computing, NSGA-II,\\
+    Deep reinforcement learning, SDN, DAG, Vehicular networks,\\
+    Mobility-aware offloading, Proactive handoff
+  }\\[1.5cm]
+  {\normalsize
+    \textbf{Team:} imed eddine benmadi , 
+  }\\[1.5cm]
+  \rule{0.55\linewidth}{0.4pt}\\[0.8cm]
+  {\normalsize\textcolor{midblue}{April 2026}}
+  \vfill
+  {\small\textit{Prepared for: Distributed Systems Lab --- Literature Review Assignment}}
+\end{titlepage}
+% ── ABSTRACT ─────────────────────────────────────────────────────────────────
+\begin{abstract}
+\noindent
+The rapid proliferation of Internet of Things (IoT) devices in smart-city and
+vehicular environments has created an urgent demand for low-latency, energy-efficient
+computation at the network edge. Task offloading---the process of delegating
+computation from resource-constrained IoT devices to fog or cloud servers---has
+emerged as the central mechanism for satisfying these demands within the
+three-tier IoT--Fog--Cloud hierarchy. This paper presents a structured literature
+review of ten representative works spanning 2021--2025, covering five distinct
+research directions: (i)~multi-objective metaheuristic optimization via NSGA-II
+with Minimax Differential Evolution, (ii)~task pre-filtering through the
+TOF-Broker Execution Cost framework, (iii)~software-defined networking for
+programmable traffic management, (iv)~microservice-oriented DAG task modeling,
+and (v)~mobility-aware offloading with deep reinforcement learning and proactive
+handoff prediction. We identify the state of the art in each sub-domain, synthesize
+the research trajectory, and formally define five open research gaps that no
+published system has jointly resolved. Our analysis argues that the convergence of
+offline Pareto optimization and online reinforcement learning---applied to DAG
+workloads with GPS-driven mobility prediction---represents the most promising
+direction for next-generation vehicular edge computing systems.
+
+%% TODO-TEAMMATE-1: If your team wants to extend the abstract to include
+%% a brief mention of your teammates' research directions (e.g., security,
+%% federated learning, or whatever areas their 10 papers cover), add 2-3
+%% sentences here. Otherwise leave as-is — it reads cleanly without it.
+\end{abstract}
+
+\vspace{0.4cm}\hrule\vspace{0.6cm}
+\tableofcontents
+\newpage
+
+% =============================================================================
+\section{Introduction}
+\label{sec:intro}
+% =============================================================================
+
+The Internet of Things ecosystem is undergoing unprecedented growth, with tens of
+billions of connected devices projected by 2030~\cite{jafari2021}. A growing
+proportion of these devices operate in latency-sensitive, mobility-intensive
+environments: smart vehicles performing real-time collision avoidance, autonomous
+drones executing path-planning algorithms, and industrial robots running precision
+control loops. These workloads share a critical characteristic---they generate
+computation-intensive tasks that exceed the processing capacity of the originating
+device yet must produce results within strict timing constraints measured in tens
+of milliseconds.
+
+Conventional cloud computing provides near-unlimited computational resources but
+introduces WAN propagation delays of 50--200\,ms, rendering it unsuitable for
+safety-critical vehicular applications~\cite{jafari2021}. Fog computing addresses
+this by positioning intermediate compute nodes one or two network hops from IoT
+devices, reducing latency to 1--10\,ms. The resulting \emph{three-tier hierarchy}
+(IoT $\rightarrow$ Fog $\rightarrow$ Cloud) creates a fundamental optimization
+problem: for each incoming task, which tier executes it, under what scheduling
+constraints, and at what energy cost?
+
+\emph{Task offloading}---the decision process routing computation across tiers---is
+formally NP-hard~\cite{mashal2024drl}. At IoT scale, the search space is
+intractable for exact algorithms. Five interconnected challenges define the current
+research landscape:
+
+\begin{enumerate}[leftmargin=*, label=\textbf{C\arabic*.}]
+  \item \textbf{Boulder Problem.} Compute-heavy tasks routed naively to fog nodes
+    consume disproportionate resources and cause queue cascade failures~\cite{nouri2024tof}.
+  \item \textbf{Cold-Start Problem.} Deep reinforcement learning agents produce
+    near-random policies during early training, causing service degradation before
+    they converge~\cite{vfc_drl2024}.
+  \item \textbf{Static Optimization Problem.} Evolutionary optimizers like NSGA-II
+    converge over hundreds of generations---orders of magnitude too slow for
+    millisecond real-time decisions~\cite{zhu2025dag}.
+  \item \textbf{Network Congestion Problem.} Reactive SDN routing cannot respond
+    fast enough to burst traffic events, causing packet loss and queuing
+    delays~\cite{csfd2025,gasmi2024sdn}.
+  \item \textbf{Mobility Problem.} In vehicular networks, devices traverse fog
+    coverage zones faster than tasks complete, causing mid-computation handoff
+    failures~\cite{mavto2024,paper5_mobility}.
+\end{enumerate}
+
+No single published system resolves all five challenges in a unified framework.
+This literature review maps the research evolution from single-objective heuristics
+to adaptive AI-driven systems, identifies the specific gaps that remain open,
+and positions a proposed architecture---the Predictive Cloud-Native Mobile Edge
+(PCNME)---as the natural convergence point of this trajectory.
+
+\textbf{Paper organization.}
+Section~\ref{sec:background} establishes technical background and formal
+definitions. Section~\ref{sec:evolution} traces four generations of research
+evolution. Section~\ref{sec:sota} surveys the state of the art in each
+sub-domain with our ten primary references. Section~\ref{sec:gaps} formalizes
+five open research gaps. Section~\ref{sec:proposed} describes the proposed
+unified architecture. Section~\ref{sec:discussion} provides comparative
+analysis. Section~\ref{sec:conclusion} concludes.
+
+%% TODO-TEAMMATE-1 and TEAMMATE-2: You may add a sentence here referencing
+%% the additional research directions covered in your respective sections
+%% (Sections 8 and 9). Example: "Section 8 examines [your topic].
+%% Section 9 addresses [other teammate's topic]."
+
+% =============================================================================
+\section{Background and Formal Definitions}
+\label{sec:background}
+% =============================================================================
+
+\subsection{Three-Tier IoT--Fog--Cloud Architecture}
+
+The three-tier model partitions computation infrastructure into:
+\textbf{Layer~1} (IoT devices)---resource-constrained task generators with limited
+CPU, memory, and battery;
+\textbf{Layer~2} (fog nodes)---intermediate edge servers co-located with network
+access points, offering low-latency compute within a coverage radius of 150--300\,m
+in urban 5G deployments; and
+\textbf{Layer~3} (cloud)---centralized high-throughput servers providing batch
+computation at the cost of 20--50\,ms additional WAN propagation delay.
+
+\subsection{Task Offloading Formulation}
+
+Let $\mathcal{T} = \{t_1, t_2, \ldots, t_N\}$ be a batch of $N$ tasks arriving
+from IoT devices. Each task $t_i$ is characterized by:
+\begin{equation}
+  t_i = \langle \ell_i,\; d_i,\; D_i,\; \mathcal{E}_i \rangle
+\end{equation}
+where $\ell_i$ is the computational demand in Million Instructions~(MI), $d_i$
+is the input data size in kilobytes, $D_i$ is the end-to-end deadline in
+milliseconds, and $\mathcal{E}_i$ is the device transmission energy in joules.
+
+The offloading decision assigns each task to a destination
+$x_i \in \{\text{FOG}_1, \ldots, \text{FOG}_K, \text{CLOUD}\}$.
+The two primary optimization objectives are:
+\begin{align}
+  f_1(\mathbf{x}) &= \sum_{i=1}^{N} E_i(x_i)
+    \quad \text{(total energy, minimize)} \label{eq:energy}\\
+  f_2(\mathbf{x}) &= \sum_{i=1}^{N} L_i(x_i)
+    \quad \text{(total latency, minimize)} \label{eq:latency}
+\end{align}
+subject to:
+\begin{align}
+  L_i(x_i) &\leq D_i \quad \forall\, i
+    \quad \text{(deadline constraint)} \\
+  \sum_{i:\,x_i = k} \ell_i &\leq C_k \quad \forall\, k
+    \quad \text{(fog capacity constraint)}
+\end{align}
+where $C_k$ is the MIPS capacity of fog node $k$.
+
+\subsection{Execution Cost and Boulder/Pebble Classification}
+
+The \emph{Execution Cost}~(EC) metric~\cite{nouri2024tof} determines fog
+feasibility:
+\begin{quote}
+\textbf{Definition (Execution Cost):}
+\begin{equation}
+  \mathrm{EC}(t_i) = \frac{\ell_i}{\text{fog\_MIPS}} \quad\text{(seconds)}
+  \label{eq:ec}
+\end{equation}
+Task $t_i$ is a \emph{Pebble} if $\mathrm{EC}(t_i) < \theta$, and a
+\emph{Boulder} if $\mathrm{EC}(t_i) \geq \theta$, where $\theta = 1.0$\,s
+is the default threshold~\cite{nouri2024tof}.
+\end{quote}
+
+
+\subsection{Pareto Dominance and Non-Dominated Sorting}
+
+\textbf{Definition (Pareto dominance):}
+Solution $\mathbf{x}^{(a)}$ dominates $\mathbf{x}^{(b)}$, written
+$\mathbf{x}^{(a)} \prec \mathbf{x}^{(b)}$, iff:
+\begin{equation}
+  f_k\!\left(\mathbf{x}^{(a)}\right) \leq f_k\!\left(\mathbf{x}^{(b)}\right)\;
+  \forall k,\quad
+  \exists j:\; f_j\!\left(\mathbf{x}^{(a)}\right) < f_j\!\left(\mathbf{x}^{(b)}\right)
+\end{equation}
+
+The Pareto front $\mathcal{P}^*$ is the set of all non-dominated solutions.
+NSGA-II~\cite{jafari2021} approximates $\mathcal{P}^*$ by evolving a population
+of candidate routing plans across multiple generations via selection, crossover,
+and mutation operators.
+
+\subsection{DAG Task Model}
+
+Modern IoT applications decompose into chains of dependent processing
+steps~\cite{li2025microservice}. The Directed Acyclic Graph (DAG) model
+represents an application as $G = (\mathcal{V}, \mathcal{E})$ where node
+$v_i \in \mathcal{V}$ is a microservice step with properties
+$\langle \ell_i, d_i^{\text{in}}, d_i^{\text{out}} \rangle$,
+and edge $(v_i, v_j) \in \mathcal{E}$ encodes data dependency: step $v_j$
+cannot start until $v_i$ completes and transmits its output. Total application
+latency over the critical path is:
+\begin{equation}
+  L_{\text{app}} = \sum_{v_i \in \text{critical path}}
+  \!\!\Bigl[ T_{\text{exec}}(v_i) + T_{\text{transfer}}(v_i, v_{i+1}) \Bigr]
+  \label{eq:dag_latency}
+\end{equation}
+where $T_{\text{transfer}} = 0$ when consecutive steps are co-located.
+
+% =============================================================================
+\section{Research Evolution: Four Generations}
+\label{sec:evolution}
+% =============================================================================
+
+\subsection{Generation 1: Single-Objective Heuristics (pre-2021)}
+
+Early task offloading research modeled the decision as binary: execute locally
+or offload entirely to the cloud. Solutions used greedy algorithms, game theory,
+and single-objective metaheuristics such as Particle Swarm Optimization and Ant
+Colony Optimization~\cite{jafari2021}. These approaches optimized one metric while
+ignoring the other, and operated on static topologies with no mobility modeling.
+
+\textbf{Key limitation:} Single-objective formulations systematically underperform
+because energy and latency conflict. Minimizing latency alone drives all tasks to
+cloud (high energy); minimizing energy alone keeps tasks local (high latency). A
+balanced solution requires explicit multi-objective treatment.
+
+\subsection{Generation 2: Multi-Objective Evolutionary Algorithms (2021--2023)}
+
+Jafari and Rezvani~\cite{jafari2021} established the multi-objective framing by
+applying NSGA-II with Minimax Differential Evolution (MMDE) mutation to the
+IoT--Fog--Cloud offloading problem. Their binary chromosome encodes routing
+decisions for a task batch; solutions are evaluated on energy~\eqref{eq:energy}
+and latency~\eqref{eq:latency} objectives simultaneously, producing Pareto fronts
+that expose the full energy--latency trade-off space.
+
+The MMDE operator~\cite{jafari2021} replaces standard random mutation with
+directional differential evolution:
+\begin{equation}
+  \mathbf{V} = \mathbf{r}_1 + F \cdot (\mathbf{r}_2 - \mathbf{r}_3),
+  \quad F = 0.5,\; \mathrm{CR} = 0.9
+  \label{eq:mmde}
+\end{equation}
+where $\mathbf{r}_1, \mathbf{r}_2, \mathbf{r}_3$ are three distinct population
+members. This improves convergence speed and solution robustness against
+variable network conditions.
+
+\textbf{Key limitation:} NSGA-II evaluates all tasks---including
+compute-infeasible boulders---on fog nodes, wasting CPU cycles and causing queue
+crashes. Additionally, hundreds-of-generations batch convergence is incompatible
+with millisecond real-time requirements.
+
+\subsection{Generation 3: Pre-Filtering and Hybrid Systems (2024)}
+
+Nouri et al.~\cite{nouri2024tof} introduced the TOF-Broker atop NSGA-II.
+By computing EC~\eqref{eq:ec} for each task before optimization, the broker
+eliminates boulders from the search space, reducing problem size by 15--30\% and
+achieving 12.18\% energy improvement over plain NSGA-II with negligible latency
+overhead. Concurrently, the microservice research community~\cite{li2025microservice}
+established that DAG-structured task models enable partial offloading---running
+lightweight steps on fog while heavy steps execute on cloud---impossible under the
+monolithic task model.
+
+\textbf{Key limitation:} The resulting systems remain static. Pre-filtered
+NSGA-II produces optimized batch routing plans that cannot adapt to changing
+fog loads, varying network conditions, or moving devices.
+
+\subsection{Generation 4: Adaptive AI-Driven Systems (2024--2025)}
+
+The current generation replaces or augments offline optimization with online
+learning agents. For vehicular settings, DRL-based offloading~\cite{vfc_drl2024}
+demonstrated that DQN agents trained to minimize queue congestion outperform
+greedy policies under high load. CSFD~\cite{csfd2025} embedded DRL inside the
+SDN controller for proactive congestion-aware routing. MAVTO~\cite{mavto2024}
+introduced GPS-based trajectory prediction to pre-position tasks at the
+vehicle's destination fog zone before handoff. Zhu et al.~\cite{zhu2025dag}
+combined DAG modeling, NSGA-II offline pre-training, and online meta-RL adaptation
+in a single pipeline.
+
+\textbf{Key limitation:} No system in this generation combines multi-objective
+offline optimization, DRL online adaptation, SDN network management, DAG task
+modeling, and proactive GPS-driven mobility---all five capabilities simultaneously.
+
+% =============================================================================
+\section{State of the Art}
+\label{sec:sota}
+% =============================================================================
+
+\subsection{Multi-Objective Metaheuristic Optimization}
+
+NSGA-II remains the dominant metaheuristic for multi-objective task offloading.
+Jafari and Rezvani~\cite{jafari2021} established the canonical formulation: a
+population of routing chromosomes (arrays of fog/cloud decisions per task) is
+evolved using non-dominated sorting, crowding distance, SBX crossover, and MMDE
+mutation~\eqref{eq:mmde}. Their evaluation on a 3-tier IoT--Fog--Cloud testbed
+demonstrated that Pareto front solutions provide meaningful energy--latency
+trade-off diversity, enabling operators to select operating points according to
+their QoS budget.
+
+The key innovation of MMDE over standard polynomial mutation is directionality:
+the mutation vector $(r_2 - r_3)$ encodes population structure, steering mutations
+toward productive search regions rather than sampling uniformly at random. This
+produces faster convergence and more robust solutions under variable fog loads.
+
+\subsection{Task Pre-Filtering: The TOF-Broker}
+
+Nouri et al.~\cite{nouri2024tof} identified the boulder problem as the dominant
+failure mode of Generation-2 systems and proposed the TOF-Broker to address it.
+The broker applies EC classification~\eqref{eq:ec} to each incoming task before
+any optimizer runs: boulders ($\mathrm{EC} \geq 1.0$\,s) are immediately routed
+to cloud; pebbles ($\mathrm{EC} < 1.0$\,s) enter the NSGA-II optimization
+pipeline. This achieves a 12.18\% energy reduction with only 0.38\% latency
+overhead, while eliminating fog node crashes under heavy-task workloads.
+
+However, the TOF-Broker introduces the \emph{Pebble Avalanche} problem: when
+task arrival rates exceed $\sim$1,000 tasks/second, the pebble queue grows faster
+than NSGA-II can drain it, eventually causing the same cascade failures the broker
+was designed to prevent. This remains an open problem addressed in
+Section~\ref{sec:gaps}.
+
+\subsection{Software-Defined Networking for Fog Systems}
+
+Gasmi and Ezzedine~\cite{gasmi2024sdn} conducted a systematic survey of SDN-based
+fog offloading, establishing the theoretical foundation for programmable network
+management in this domain. Their key finding: SDN's control/data plane
+separation---placing routing intelligence in a centralized controller while
+forwarding switches execute OpenFlow rules blindly---enables instant, globally
+consistent traffic reprogramming from a single API call, unavailable in traditional
+distributed routing.
+
+This capability is critical for task offloading: when a large batch of pebbles
+needs to be sent to the cloud (a Super-Task), the SDN controller can open a
+dedicated high-priority lane on all intervening switches in under 5\,ms, bypassing
+background telemetry traffic. However, Gasmi and Ezzedine~\cite{gasmi2024sdn}
+also identify the centralized controller bottleneck: under high IoT device density,
+the controller becomes overloaded with new-flow requests, adding 8--15\,ms latency
+per flow---negating the benefit of SDN for latency-sensitive applications.
+
+\subsection{Microservice Architecture and DAG Task Modeling}
+
+Li et al.~\cite{li2025microservice} surveyed 136 studies (2020--2024) and produced
+the first unified taxonomy bridging microservices orchestration and energy
+efficiency across five resource management pillars: service placement, resource
+provisioning, task scheduling and offloading, resource allocation, and replica
+selection. Their central finding is that inter-pillar synergy---jointly optimizing
+across all five pillars---remains almost entirely unaddressed in existing work.
+
+The DAG model, formalized in~\cite{zhu2025dag} as $G = (\mathcal{V}, \mathcal{E})$
+with per-node properties $\langle \ell_i, d_i^{\text{in}}, d_i^{\text{out}}
+\rangle$, enables partial offloading at step granularity: lightweight steps can
+execute on fog while GPU-heavy steps run on cloud, with data dependencies
+respected. The total application latency~\eqref{eq:dag_latency} now depends on
+inter-step data transfer costs, which vary depending on whether consecutive steps
+are co-located. This fundamentally changes the optimization problem---instead of
+one routing decision per task, there is one decision per DAG step.
+
+\subsection{Deep Reinforcement Learning for Task Offloading}
+
+\subsubsection{DRL for Vehicular Fog Computing}
+
+An anonymous vehicular fog computing study~\cite{vfc_drl2024} trained DQN agents
+on a grid-city simulation environment modeled on Salt Lake City's 200$\times$200\,m
+block structure. Client vehicles with insufficient compute offload tasks to nearby
+parked service vehicles acting as fog nodes. The DQN observes queue depths,
+distances, and channel quality at all candidate nodes and selects the best
+destination via epsilon-greedy policy. Key result: DRL reduces queue congestion
+across the network---not just average per-task latency---and handles high-load
+scenarios where greedy methods cascade-fail.
+
+However, this work has no energy objective, no offline pre-training (cold-start
+problem), and no mobility handling during task execution---all of which motivate
+the proposed architecture.
+
+\subsubsection{SDN-Integrated DRL: CSFD}
+
+The CSFD framework~\cite{csfd2025} embeds a DRL agent directly in the SDN control
+plane. Unlike standard SDN controllers that reactively install rules per new flow
+(8--15\,ms overhead), CSFD's agent predicts upcoming traffic bursts and
+pre-installs OpenFlow rules before the traffic arrives---reducing per-flow overhead
+to zero. Evaluated in a VANET environment, CSFD achieves higher packet delivery
+ratio and lower latency than both DRL-only and SDN-only baselines. This work
+directly motivates the network-routing agent (Agent~2) in the proposed
+architecture; however, CSFD handles network routing only, with no compute
+placement intelligence---a critical gap.
+
+\subsubsection{DAG Task Offloading with Meta-RL and NSGA-II Pre-training}
+
+Zhu et al.~\cite{zhu2025dag} proposed the architecturally closest published
+system to the proposed PCNME. They model applications as DAGs, run NSGA-II
+offline on historical batches to generate Pareto-optimal routing plans, convert
+these plans into (state, action) training pairs, and pre-train a Meta-RL agent
+via behavioral cloning. The meta-policy adapts rapidly to new network environments
+via multiple MDPs, eliminating the cold-start problem. Their result: meta-RL
+combined with NSGA-II pre-training outperforms both stand-alone DRL and NSGA-II
+on dynamic environments.
+
+Critically, this work has no mobility model and no SDN layer; their future work
+explicitly requests both---provided by the proposed architecture.
+
+\subsection{Mobility-Aware Offloading}
+
+\subsubsection{Reactive Handoff: NTB/HTB Dual-Buffer System}
+
+A collaborative offloading framework~\cite{paper5_mobility} introduced the
+NTB/HTB dual-buffer system as a reactive fallback for mid-computation vehicle
+handoffs. When a vehicle disconnects from Fog~A mid-task, the task migrates from
+the New Task Buffer (NTB) to the Handoff Task Buffer (HTB), which preempts the
+NTB and receives maximum CPU priority. Fog~A completes the task, holds the result
+keyed by vehicle~ID, and delivers it the moment the vehicle reconnects to any fog
+node---eliminating task re-submission. This achieves 50\%+ latency reduction in
+high-mobility scenarios.
+
+However, the system is purely reactive: it waits for physical disconnection before
+acting, wasting the entire handoff gap (typically 0.5--3\,s) in wasted service time.
+
+\subsubsection{Proactive Handoff: MAVTO}
+
+MAVTO~\cite{mavto2024} introduced the first peer-reviewed proactive mobility
+framework for vehicular edge computing. Given a vehicle's Spatial Tag (GPS
+coordinates, speed $v$, heading $\theta$), the system computes:
+\begin{equation}
+  T_{\text{exit}} = \frac{R_{\text{fog}} - \text{dist}(v_{\text{pos}},\, f_{\text{pos}})}
+  {v_{\text{closing}}}
+  \label{eq:texit}
+\end{equation}
+where $v_{\text{closing}}$ is the component of vehicle velocity directed toward
+the zone boundary. MAVTO selects among three modes: \emph{direct}
+($T_{\text{exec}} < T_{\text{exit}}$---task finishes before vehicle leaves),
+\emph{predictive} ($T_{\text{exec}} > T_{\text{exit}}$---pre-spin container at
+destination fog node), and \emph{hybrid} (partial local execution). Evaluated on
+real vehicular mobility datasets, MAVTO achieves 25\%+ improvement in task
+completion success rate over non-mobility-aware baselines.
+
+Limitations: mode selection is rule-based (not learned), no multi-objective
+optimization, and no SDN routing for migration paths.
+
+\subsubsection{Spatiotemporal Prediction: Digital Twin + STGNN}
+
+The state of the art in trajectory prediction for vehicular edge computing is
+presented by Zhu et al.~\cite{zhu2025spatiotemporal}, who combine a Digital Twin
+(continuously synchronized virtual replica of the network), a
+Spatio-Temporal Graph Neural Network (STGNN) for demand forecasting, and A3C
+multi-agent DRL for task caching. The STGNN models the vehicular network as a
+graph $G = (\mathcal{N}, \mathcal{E})$ and applies graph convolution (spatial
+correlations) combined with LSTM (temporal patterns) to predict future task
+demand at each fog zone, enabling strategic resource pre-allocation 5--10\,s ahead
+of actual arrivals.
+
+This 2025 system represents the ceiling of current capabilities but lacks
+multi-objective optimization, task pre-filtering, and energy awareness.
+
+\subsection{Comparative Summary}
+
+Table~\ref{tab:comparison} summarizes our ten primary references across six key
+dimensions. The proposed architecture (final row) is the only system addressing
+all six simultaneously.
+
+\begin{table}[H]
+\centering
+\caption{Comparative summary of surveyed works.
+  \checkmark~=~addressed, $\circ$~=~partial, $\times$~=~not addressed.}
+\label{tab:comparison}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabularx}{\textwidth}{@{}L{3.0cm}C{1.1cm}C{1.2cm}C{1.0cm}C{1.0cm}
+                              C{1.0cm}C{1.2cm}C{1.1cm}@{}}
+\toprule
+\textbf{Work} & \textbf{Multi-obj.} & \textbf{Pre-filter}
+  & \textbf{DAG} & \textbf{DRL} & \textbf{SDN}
+  & \textbf{Mobility} & \textbf{Year} \\
+\midrule
+Jafari~\&~Rezvani~\cite{jafari2021}
+  & \checkmark & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ & 2021 \\
+Nouri et al.~\cite{nouri2024tof}
+  & \checkmark & \checkmark & $\times$ & $\times$ & $\times$ & $\times$ & 2024 \\
+Gasmi~\&~Ezzedine~\cite{gasmi2024sdn}
+  & $\times$ & $\times$ & $\times$ & $\times$ & \checkmark & $\times$ & 2023 \\
+Li et al.~\cite{li2025microservice}
+  & $\circ$ & $\times$ & \checkmark & $\circ$ & $\times$ & $\times$ & 2025 \\
+Collab.\ Framework~\cite{paper5_mobility}
+  & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ & $\circ$ & 2023 \\
+VFC-DRL~\cite{vfc_drl2024}
+  & $\times$ & $\times$ & $\times$ & \checkmark & $\times$ & $\times$ & 2024 \\
+CSFD~\cite{csfd2025}
+  & $\times$ & $\times$ & $\times$ & \checkmark & \checkmark & $\times$ & 2025 \\
+Zhu et al.\ DAG+MRL~\cite{zhu2025dag}
+  & \checkmark & $\times$ & \checkmark & \checkmark & $\times$ & $\times$ & 2025 \\
+MAVTO~\cite{mavto2024}
+  & $\times$ & $\times$ & $\times$ & $\times$ & $\times$ & \checkmark & 2024 \\
+Zhu et al.\ STGNN~\cite{zhu2025spatiotemporal}
+  & $\times$ & $\times$ & $\circ$ & \checkmark & $\times$ & \checkmark & 2025 \\
+\midrule
+\textbf{Proposed PCNME}
+  & \checkmark & \checkmark & \checkmark & \checkmark
+  & \checkmark & \checkmark & 2026 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% =============================================================================
+\section{Open Research Gaps}
+\label{sec:gaps}
+% =============================================================================
+
+The survey reveals five clearly defined gaps. We formally state all five; the
+first two constitute our primary contributions to the gap analysis.
+
+\medskip\noindent\textbf{Gap~1 — The Integration Gap (Primary).}
+No published system simultaneously addresses all six dimensions in
+Table~\ref{tab:comparison}: multi-objective optimization, pre-filtering,
+DAG task modeling, DRL online adaptation, SDN network management, and proactive
+mobility handling. Systems that advance one or two dimensions consistently
+ignore the others. The lack of integration is not incidental---it reflects the
+absence of a unified theoretical framework that models the interactions between
+compute placement, network routing, and mobility as a single joint optimization
+problem. Specifically, compute placement decisions (which fog node runs a DAG
+step) and network routing decisions (which physical path carries the step's data)
+are interdependent: a placement that minimizes compute latency may select a fog
+node whose network path is currently saturated, negating the benefit. Resolving
+this gap requires either joint optimization (intractable action space) or
+architectural coupling of two specialized agents with shared information---a
+design not yet demonstrated at the DAG-and-mobility scale.
+
+
+\medskip\noindent\textbf{Gap~2 — The Cold-Start Gap (Primary).}
+All reviewed DRL systems are trained from random weight initialization, producing
+near-random policies during early deployment. This cold-start period---spanning
+thousands to tens of thousands of interaction steps---causes significant service
+degradation that is unacceptable in production vehicular safety systems. Zhu
+et al.~\cite{zhu2025dag} demonstrate NSGA-II Pareto solutions as behavioral
+cloning data for meta-RL pre-training, but do not validate this pipeline in the
+full IoT--Fog--Cloud vehicular context with mobility and SDN. The critical
+open question is: can offline evolutionary optimization (TOF-MMDE-NSGA-II)
+systematically eliminate the cold-start problem for both compute placement and
+network routing agents, and does this pre-training advantage persist across the
+diverse environmental conditions of a city-scale vehicular network?
+
+
+\medskip\noindent\textbf{Gap~3 — The DAG-Mobility Gap.}
+Mobility-aware offloading systems~\cite{mavto2024,paper5_mobility} treat tasks
+as monolithic units. When a task is structured as a multi-step DAG, a handoff
+may occur between any two successive steps, requiring step-level migration
+decisions. No published work addresses proactive handoff for DAG-structured
+workloads where different steps may execute concurrently on different fog nodes.
+
+
+\medskip\noindent\textbf{Gap~4 — The Pebble Avalanche Gap.}
+The TOF-Broker~\cite{nouri2024tof} resolves the boulder problem but introduces
+the Pebble Avalanche: under high task arrival rates, the pebble queue grows
+faster than NSGA-II drains it, causing cascade failures. No mechanism for
+graceful degradation under avalanche conditions (e.g., dynamic threshold
+adjustment or task aggregation and bulk cloud routing) has been proposed or
+validated.
+
+
+\medskip\noindent\textbf{Gap~5 — The Spatiotemporal Prediction Gap.}
+MAVTO~\cite{mavto2024} uses linear dead-reckoning for trajectory prediction,
+which fails under sudden maneuvers, intersections, and variable speeds. Zhu
+et al.~\cite{zhu2025spatiotemporal} demonstrate STGNN-based spatiotemporal
+demand prediction as a superior alternative, but do not integrate it with a
+proactive handoff mechanism or multi-objective optimization. A system combining
+STGNN prediction with proactive container migration and Pareto-optimal placement
+has not been demonstrated.
+
+
+%% TODO-TEAMMATE-1: Insert your 2+ research gaps here, derived from your
+%% own 10 papers. Use the ...
+ environment to
+%% match the formatting. Label them Gap~6, Gap~7, etc.
+%%
+%% Example structure:
+%% %% \medskip\noindent\textbf{Gap~6 — [Your Gap Title].}
+%% [Your gap description citing your papers with \cite{your_key}.]
+%%
+
+
+%% TODO-TEAMMATE-2: Same as above. Insert Gap~7, Gap~8 etc.
+
+% =============================================================================
+\section{Proposed Architecture: Predictive Cloud-Native Mobile Edge}
+\label{sec:proposed}
+% =============================================================================
+
+\subsection{Architecture Overview}
+
+The Predictive Cloud-Native Mobile Edge (PCNME) architecture directly addresses
+Gaps~1--5 through five integrated components:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{TOF-Broker + Aggregator (Gaps~1, 4).}
+    The TOF-Broker applies EC classification~\eqref{eq:ec} per DAG step, routing
+    boulders directly to cloud. The Aggregator handles avalanche conditions by
+    compressing overflow pebbles into Super-Tasks routed via SDN VIP lanes.
+
+  \item \textbf{TOF-MMDE-NSGA-II Offline Optimizer (Gap~2).}
+    Combines TOF pre-filtering with MMDE-enhanced NSGA-II~\eqref{eq:mmde} to
+    generate Pareto-optimal routing plans from historical data. Plans are
+    decomposed into (state, action) training pairs for behavioral cloning of
+    both DRL agents, eliminating cold-start.
+
+  \item \textbf{DRL Agent~1 --- Task Placement Brain (Gap~1).}
+    A Deep Q-Network~\cite{vfc_drl2024} pre-trained on NSGA-II Pareto solutions
+    and fine-tuned online via experience replay. Observes a 13-dimensional state
+    vector (fog CPU loads, queue depths, task EC, bandwidth, vehicle speed,
+    heading, $T_{\text{exit}}$, deadline remaining, cloud load). Action space:
+    \{FOG\_A, FOG\_B, FOG\_C, FOG\_D, CLOUD\}.
+
+  \item \textbf{DRL Agent~2 --- SDN Network Brain (Gaps~1, 4).}
+    A second DQN embedded in the SDN controller~\cite{csfd2025}, pre-trained on
+    historical city traffic patterns. Pre-installs OpenFlow flow rules before
+    traffic arrives, eliminating per-flow controller overhead. Decoupled from
+    Agent~1 but shares network-state telemetry.
+
+  \item \textbf{Trajectory Predictor + NTB/HTB System (Gaps~3, 5).}
+    Parses vehicle Spatial Tags (GPS, speed, heading) and computes
+    $T_{\text{exit}}$~\eqref{eq:texit} per DAG step individually---step-level
+    mobility assessment, not task-level. Triggers proactive container pre-spin
+    on the destination fog node when $T_{\text{exec}} > T_{\text{exit}}$.
+    NTB/HTB buffers~\cite{paper5_mobility} provide deterministic fallback when
+    trajectory prediction fails.
+\end{enumerate}
+
+\subsection{Hybrid Offline--Online AI Pipeline}
+
+\begin{enumerate}[leftmargin=*, label=\textbf{Phase \arabic*:}]
+  \item \textbf{Offline.} Historical task logs and mobility traces feed
+    TOF-MMDE-NSGA-II. Pareto solutions are converted to (state, action) pairs
+    and used to pre-train both agents via behavioral cloning.
+  \item \textbf{Online.} Agent~1 makes placement decisions per pebble DAG step
+    at inference speed ($<$1\,ms). Agent~2 manages SDN flow rules proactively.
+    Both agents update weights continuously from simulation rewards:
+    \[
+      R = -0.5\cdot L_{\text{norm}} - 0.3\cdot E_{\text{norm}}
+        - 0.2\cdot \mathbb{1}[L > D] \cdot \lambda_{\text{penalty}}
+    \]
+    where $\lambda_{\text{penalty}} = 10$ for safety-critical DAG steps.
+\end{enumerate}
+
+% =============================================================================
+\section{Comparative Discussion}
+\label{sec:discussion}
+% =============================================================================
+
+\subsection{Against Generation-2 Systems}
+
+The proposed architecture subsumes~\cite{jafari2021} entirely: NSGA-II with MMDE
+is retained as the offline optimizer. The TOF-Broker (from~\cite{nouri2024tof})
+reduces the problem NSGA-II must solve; the DRL agents provide real-time
+adaptation that NSGA-II cannot; the mobility layer handles vehicular dynamics
+neither predecessor addressed.
+
+\subsection{Against DAG+MRL \cite{zhu2025dag}}
+
+Zhu et al.'s meta-RL system is the architecturally closest prior work. The
+proposed system extends it with: (i)~TOF pre-filtering reducing Agent~1's
+decision space, (ii)~SDN-managed network routing via Agent~2, and
+(iii)~step-level proactive mobility via~$T_{\text{exit}}$~\eqref{eq:texit}.
+Their future work explicitly requests all three.
+
+\subsection{Against CSFD \cite{csfd2025}}
+
+CSFD provides state-of-the-art SDN+DRL network routing but has no compute
+placement agent. The proposed system's Agent~2 performs the same function as
+CSFD; Agent~1 provides the compute placement intelligence CSFD lacks. The
+architectural coupling between agents addresses Gap~1 in a way CSFD cannot.
+
+\subsection{Against MAVTO \cite{mavto2024}}
+
+MAVTO provides the $T_{\text{exit}}$ proactive handoff mechanism but applies it
+to monolithic tasks. The proposed system extends MAVTO with: (i)~step-level
+assessment (Gap~3), (ii)~RL-learned mode selection replacing MAVTO's rule-based
+thresholds, and (iii)~SDN-managed migration paths for container transfer.
+
+%% TODO-TEAMMATE-1: Add a subsection here comparing your proposed ideas
+%% (from your papers) against the state of the art in your sub-domain.
+%% Example: \subsection{Against [Your Area] Systems} ...
+
+%% TODO-TEAMMATE-2: Same — add your comparative subsection here.
+
+% =============================================================================
+%% TODO-TEAMMATE-1: INSERT YOUR FULL SECTION HERE
+%% ─────────────────────────────────────────────────────────────────────────────
+%% This is where your teammate adds their literature review section.
+%% Suggested structure:
+%%
+%% \section{[Your Research Sub-Domain]}
+%% \label{sec:teammate1}
+%%
+%% \subsection{Background}
+%% ...
+%%
+%% \subsection{State of the Art}
+%% ...
+%%
+%% \subsection{Open Problems}
+%% ...
+%%
+%% Cite your papers using \cite{} and add them to the bibliography at the end.
+%% ─────────────────────────────────────────────────────────────────────────────
+
+% =============================================================================
+%% TODO-TEAMMATE-2: INSERT YOUR FULL SECTION HERE
+%% ─────────────────────────────────────────────────────────────────────────────
+%% Same as above for the second teammate.
+%% ─────────────────────────────────────────────────────────────────────────────
+
+% =============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+% =============================================================================
+
+This literature review traced the evolution of task offloading research across
+four generations---from single-objective heuristics, through multi-objective
+evolutionary algorithms and hybrid pre-filtering systems, to the current generation
+of adaptive AI-driven architectures. We surveyed ten representative works spanning
+2021--2025 and formally identified five open research gaps.
+
+Gaps~1 and~2---the Integration Gap and Cold-Start Gap---represent our primary
+contributions to the gap analysis. Gap~1 establishes that the joint optimization
+of compute placement, network routing, and mobility under DAG task models has
+not been demonstrated at city scale. Gap~2 argues that the use of offline
+evolutionary Pareto solutions as pre-training data for online DRL agents is a
+promising and largely unvalidated approach to eliminating cold-start degradation
+in vehicular safety systems.
+
+The proposed PCNME architecture addresses all five gaps through a unified pipeline:
+TOF-MMDE-NSGA-II offline optimization $\rightarrow$ dual DQN agent pre-training
+$\rightarrow$ live task placement and SDN routing with proactive GPS-driven
+mobility handling. No individual component is novel in isolation; the novelty
+lies in their integration and the offline-to-online knowledge transfer mechanism.
+
+Future work directions include: (1) validating the behavioral cloning pre-training
+pipeline across diverse city topologies; (2) extending trajectory prediction from
+linear dead-reckoning to STGNN-based spatiotemporal
+forecasting~\cite{zhu2025spatiotemporal}; (3) investigating federated learning
+to train Agent~2 across multiple city deployments without sharing raw traffic
+data; and (4) exploring TD3 or SAC as higher-performing alternatives to DQN for
+the continuous-action resource allocation sub-problem.
+
+%% TODO-TEAMMATE-1: Add 1-2 sentences summarizing your conclusion here.
+%% TODO-TEAMMATE-2: Add 1-2 sentences summarizing your conclusion here.
+
+% =============================================================================
+% BIBLIOGRAPHY
+% =============================================================================
+\bibliographystyle{plainnat}
+
+\begin{thebibliography}{99}
+
+% ── YOUR 10 PAPERS ──────────────────────────────────────────────────────────
+
+\bibitem{jafari2021}
+Jafari, V. and Rezvani, M.\,H.
+\newblock Joint optimization of energy consumption and time delay in
+  {IoT}--fog--cloud computing environments using {NSGA-II} metaheuristic
+  algorithm.
+\newblock \emph{Journal of Ambient Intelligence and Humanized Computing},
+  14:1675--1698, 2023 (published online 2021).
+
+\newblock URL: \url{https://link.springer.com/article/10.1007/s12652-021-03388-2}
+
+\bibitem{nouri2024tof}
+Nouri, N. and Rezvani, M.\,H.
+\newblock A multi-objective approach for optimizing {IoT} applications
+  offloading in fog--cloud environments with {NSGA-II}.
+\newblock \emph{The Journal of Supercomputing}, 2024.
+
+\newblock URL: \url{https://link.springer.com/article/10.1007/s11227-024-06431-z}
+
+\bibitem{gasmi2024sdn}
+Gasmi, K. and Ezzedine, T.
+\newblock Reinforcement learning based task offloading of {IoT} applications in
+  fog computing: algorithms and optimization techniques.
+\newblock \emph{Cluster Computing}, 2024.
+
+\newblock URL: \url{https://www.ijcnis.org/index.php/ijcnis/article/view/8458/2522}
+
+\bibitem{li2025microservice}
+Li, Y. et al.
+\newblock Energy-efficient resource management in microservices-based fog and
+  edge computing: state-of-the-art and future directions.
+\newblock \emph{ACM Computing Surveys}, 2025.
+\newblock URL: \url{https://arxiv.org/pdf/2512.04093}
+
+\bibitem{paper5_mobility}
+{Anonymous}.
+\newblock A collaborative offloading task framework for {IoT} fog computing.
+\newblock Technical report, 2023.
+
+\bibitem{vfc_drl2024}
+{Anonymous}.
+\newblock Deep reinforcement learning for delay-optimized task offloading in
+  vehicular fog computing.
+\newblock \emph{arXiv preprint arXiv:2410.03472}, 2024.
+\newblock URL: \url{https://arxiv.org/html/2410.03472}
+
+\bibitem{csfd2025}
+{Anonymous}.
+\newblock {CSFD}: Enhancing congestion reduction in vehicular communication
+  with {SDN} and fog integration using deep reinforcement learning.
+\newblock \emph{Analog Integrated Circuits and Signal Processing}, 2025.
+
+\newblock URL: \url{https://link.springer.com/article/10.1007/s10470-025-02541-7}
+
+\bibitem{zhu2025dag}
+Zhu, L. et al.
+\newblock Dynamic task offloading scheme for edge computing via
+  meta-reinforcement learning.
+\newblock \emph{Journal of Manufacturing Systems}, 2025.
+\newblock URL: \url{https://www.sciencedirect.com/science/article/pii/S1546221825000712}
+
+\bibitem{mavto2024}
+{Anonymous}.
+\newblock Mobility-aware task offloading and resource allocation in
+  {UAV}-assisted vehicular edge computing networks.
+\newblock \emph{Drones}, 8(11):696, 2024.
+
+\newblock URL: \url{https://www.mdpi.com/2504-446X/8/11/696}
+
+\bibitem{zhu2025spatiotemporal}
+Zhu, L. et al.
+\newblock A vehicular edge computing offloading and task caching solution based
+  on spatiotemporal prediction.
+\newblock \emph{Future Generation Computer Systems}, 166:107679, 2025.
+
+\newblock URL: \url{https://www.sciencedirect.com/article/abs/pii/S0167739X24006435}
+
+% ── ADDITIONAL REFERENCES USED IN TEXT ──────────────────────────────────────
+
+\bibitem{mashal2024drl}
+Mashal, I. et al.
+\newblock Multiobjective offloading optimization in fog computing using deep
+  reinforcement learning.
+\newblock \emph{Journal of Computer Networks and Communications}, 2024.
+
+
+%% TODO-TEAMMATE-1: Add your 10 paper references here using the same
+%% \bibitem format. Give each a short memorable key like {author2024keyword}.
+
+%% TODO-TEAMMATE-2: Add your 10 paper references here.
+
+\end{thebibliography}
+
+\end{document}

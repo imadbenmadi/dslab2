@@ -1,413 +1,401 @@
-# Smart City Vehicular Task Offloading System
+# Smart City Vehicular Task Offloading System (Istanbul Urban Network)
 
-**Production-Grade IoT-Fog-Cloud Simulation with Real-World Datasets**
+**IoT–Fog–Cloud task offloading for vehicular object detection** using a hybrid of **TOF-broker classification**, **NSGA-II multi-objective optimization**, and **Deep Q-Network (DQN)** agents.
 
-[![Status](https://img.shields.io/badge/Status-Production%20Ready-brightgreen)]()
-[![Python](https://img.shields.io/badge/Python-3.8+-blue)]()
-[![License](https://img.shields.io/badge/License-MIT-green)]()
+This README merges the content previously split across `PROJECT_SUMMARY.txt` and `explanation.md` into a single, coherent technical document.
 
 ---
 
-## 📋 Project Overview
+## Contents
 
-A comprehensive Python simulation framework for **intelligent task offloading** in smart city vehicular networks. The system combines multi-objective optimization (NSGA-II) with deep reinforcement learning (DQN) to minimize latency and energy consumption while maximizing quality of service in a 3-tier IoT-Fog-Cloud infrastructure.
-
-**Real-World Integration:** CARLA vehicle trajectories, YOLOv5 object detection benchmarks, and CRAWDAD network bandwidth traces.
-
-**Application Domain:** Autonomous vehicles performing real-time object detection (traffic monitoring, pedestrian detection) in urban environments with edge computing.
-
----
-
-## 🎯 Key Features
-
-✅ **Hybrid Optimization Framework**
-
-- NSGA-II multi-objective optimization (energy vs. latency)
-- Behavioral cloning for fast agent pre-training
-- Online DQN learning for real-time adaptation
-
-✅ **Real-World Datasets**
-
-- CARLA simulator: Realistic Istanbul vehicle trajectories
-- YOLOv5 benchmarks: Actual detection latencies (CPU/GPU/Edge TPU)
-- CRAWDAD traces: Real 4G/WiFi network patterns
-
-✅ **3-Tier Architecture**
-
-- IoT Layer: 50 vehicles with onboard cameras
-- Fog Layer: 4 edge nodes (Istanbul topology)
-- Cloud Layer: Central server with unlimited capacity
-
-✅ **Intelligent Task Management**
-
-- TOF-Broker: Smart boulder/pebble classification
-- Agent 1: Task placement optimization
-- Agent 2: SDN network routing
-
-✅ **Production-Quality Code**
-
-- ~2,700 lines of production code
-- Comprehensive metrics collection
-- CSV data export for analysis
-- Professional documentation
+1. [Executive summary](#executive-summary)
+2. [System architecture](#system-architecture)
+3. [Task model (YOLO-style DAG)](#task-model-yolo-style-dag)
+4. [Core algorithms](#core-algorithms)
+5. [Real-world datasets (synthetic generators)](#real-world-datasets-synthetic-generators)
+6. [Project structure](#project-structure)
+7. [Quick start (offline pre-training)](#quick-start-offline-pre-training)
+8. [Pre-training & validation](#pre-training--validation)
+9. [Module reference (examples)](#module-reference-examples)
+10. [Configuration](#configuration)
+11. [Metrics](#metrics)
+12. [Expected results (targets)](#expected-results-targets)
+13. [Implementation status (accurate to this repo)](#implementation-status-accurate-to-this-repo)
+14. [Next steps](#next-steps)
+15. [Troubleshooting](#troubleshooting)
+16. [References](#references)
+17. [License](#license)
 
 ---
 
-## 🚀 Quick Start
+## Executive summary
 
-### Installation
+This project models **smart-city vehicular object detection** as a **multi-step DAG** that must meet a strict end-to-end deadline (default: **200ms**). Vehicles produce tasks at camera rate, and the system decides where to execute offloadable DAG steps:
 
-```bash
-# Clone or navigate to project
-cd implementation
+- **IoT layer:** vehicles
+- **Fog layer:** 4 edge nodes (Istanbul districts)
+- **Cloud layer:** central server
 
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### Run Pre-training
-
-```bash
-python main.py
-```
-
-**Expected Output (~25 seconds):**
-
-```
-PROFESSIONAL SMART CITY VEHICULAR TASK OFFLOADING SYSTEM
-Istanbul Urban Network
-
-📍 Generating CARLA vehicle trajectories...
-   ✓ Generated 10 CARLA trajectories
-
-📡 Loading network bandwidth traces...
-   ✓ Urban 4G (mean): 34.1 Mbps
-
-🎯 Running NSGA-II optimization...
-   ✓ Generated 500 training pairs
-
-✅ Agent 1 pre-training complete. Final loss: 1.5424
-✅ System deployment complete
-```
-
-**Outputs Created:**
-
-- `results/carla_trajectories.csv` — 10,000 vehicle position samples
-- `results/network_bandwidth.csv` — 1,000+ network bandwidth traces
+Key idea: split steps into **boulders** vs **pebbles** using TOF (execution-cost threshold), then route pebbles using **NSGA-II** and train a DQN (Agent 1) via **behavioral cloning**.
 
 ---
 
-## 📁 Project Structure
+## System architecture
+
+### 3-tier computing stack
+
+```
+IoT (Vehicles)
+  ↓  4G/5G link
+Fog (4 nodes)
+  ↓  backbone
+Cloud (1 node)
+```
+
+### Istanbul topology (from `config.py`)
+
+- Fog-A: Besiktas at (200, 500)
+- Fog-B: Sisli at (500, 200)
+- Fog-C: Kadikoy at (800, 500)
+- Fog-D: Uskudar at (500, 800)
+
+Coverage radius: 250m (grid is 1000m × 1000m).
+
+---
+
+## Task model (YOLO-style DAG)
+
+Object detection is modeled as a 5-step pipeline (see `config.py -> DAG_STEPS`):
+
+1. Capture + compress (device)
+2. Pre-process
+3. Feature extract
+4. Object classify
+5. Alert generate
+
+End-to-end requirement: `TOTAL_DEADLINE_MS = 200`.
+
+---
+
+## Core algorithms
+
+### 1) TOF Broker (boulder / pebble classification)
+
+The TOF broker computes **execution cost**:
+
+```
+EC = MI / FOG_MIPS   (seconds)
+```
+
+Classification rule (default threshold: `EC_THRESHOLD = 1.0`):
+
+- If `EC ≥ 1.0s` → **boulder** → route to **cloud**
+- Else → **pebble** → optimize offloading among fog/cloud actions
+
+Implementation: `broker/tof_broker.py`.
+
+### 2) Multi-objective optimization (NSGA-II)
+
+For pebbles, NSGA-II optimizes two objectives:
+
+1. Minimize **energy**
+2. Minimize **latency**
+
+Decision variables: per-step discrete action in `{Fog-A, Fog-B, Fog-C, Fog-D, Cloud}`.
+
+Implementation: `optimizer/nsga2_mmde.py`.
+
+### 3) Agent 1 (DQN) — task placement
+
+- State: 13-dimensional vector built in `optimizer/nsga2_mmde.py::build_state_from_step()`
+- Action space: 5 discrete destinations (Fog-A/B/C/D or Cloud)
+- Offline pre-training: behavioral cloning from NSGA-II knee-point solution
+
+Implementation: `agents/agent1.py` and `agents/dqn.py`.
+
+### 4) Agent 2 (DQN) — SDN routing (scaffold)
+
+Agent 2 is implemented as a DQN policy with a routing action space:
+
+`PRIMARY, ALT1, ALT2, VIP_RESERVE, BEST_EFFORT`
+
+Implementation: `agents/agent2.py`.
+
+### 5) Mobility + handoff prediction
+
+The trajectory predictor estimates:
+
+- `T_exit`: time until a vehicle leaves the current fog coverage
+- `T_exec`: execution time under fog load
+
+Mode selection:
+
+- `DIRECT` if `T_exec < T_exit`
+- else `PROACTIVE`
+
+Implementation: `mobility/handoff.py`.
+
+---
+
+## Real-world datasets (synthetic generators)
+
+This repository integrates “real-world inspired” datasets via generators in `datasets.py`:
+
+### CARLA-like trajectories
+
+- Generates waypoints sampled at 10Hz on a 1000m × 1000m grid
+- Exports to: `results/carla_trajectories.csv`
+
+### CRAWDAD-like bandwidth traces
+
+- Generates time-series bandwidth for `urban_4g`, `edge_wifi`, and `backbone`
+- Exports to: `results/network_bandwidth.csv`
+
+### YOLOv5-like latency benchmarks
+
+`datasets.py` contains a benchmark table for YOLOv5 variants (CPU/GPU/Edge TPU) used to parameterize task generation.
+
+---
+
+## Project structure
 
 ```
 implementation/
-├── config.py                           # System configuration & Istanbul topology
-├── main.py                             # Entry point (offline pre-training)
-├── datasets.py                         # Real-world data generators
+├── config.py
+├── main.py
+├── datasets.py
 │
 ├── environment/
-│   ├── task.py                         # YOLOv5 DAG task pipeline
-│   ├── vehicle.py                      # CARLA trajectory support
-│   ├── fog_node.py                     # Fog node resources
-│   ├── cloud.py                        # Cloud infrastructure
-│   └── city.py                         # Istanbul grid topology
+│   ├── task.py
+│   ├── vehicle.py
+│   ├── fog_node.py
+│   ├── cloud.py
+│   └── city.py
 │
 ├── broker/
-│   └── tof_broker.py                   # Boulder/Pebble classification
+│   └── tof_broker.py
 │
 ├── optimizer/
-│   └── nsga2_mmde.py                   # Multi-objective optimization
+│   └── nsga2_mmde.py
 │
 ├── agents/
-│   ├── dqn.py                          # DQN neural network
-│   ├── agent1.py                       # Task placement agent (pre-trained)
-│   └── agent2.py                       # SDN routing agent
+│   ├── dqn.py
+│   ├── agent1.py
+│   └── agent2.py
 │
 ├── mobility/
-│   └── handoff.py                      # Trajectory prediction & handoff
-│
-├── sdn/
-│   └── controller.py                   # OpenFlow abstraction
+│   └── handoff.py
 │
 ├── simulation/
-│   ├── runner.py                       # SimPy event loop
-│   └── env.py                          # Gymnasium interface
+│   ├── runner.py
+│   └── env.py
 │
 ├── baselines/
-│   ├── baseline1.py                    # Greedy nearest fog
-│   ├── baseline2.py                    # Random offloading
-│   └── baseline3.py                    # Cloud only
+│   ├── baseline1.py
+│   ├── baseline2.py
+│   └── baseline3.py
 │
-├── results/
-│   ├── metrics.py                      # Real-time metrics
-│   ├── plots.py                        # Visualization
-│   ├── carla_trajectories.csv          # Vehicle paths (930 KB)
-│   └── network_bandwidth.csv           # Network traces (171 KB)
+├── sdn/
+│   └── controller.py
 │
-└── explanation.md                      # Complete technical documentation
+└── results/
+    ├── metrics.py
+    ├── plots.py
+    ├── carla_trajectories.csv
+    └── network_bandwidth.csv
 ```
 
 ---
 
-## 🏗️ System Architecture
+## Quick start (offline pre-training)
 
-### 3-Tier Infrastructure (Istanbul)
-
-```
-CLOUD (10,000 MIPS) → 30ms WAN latency
-  ↕ Fiber backbone (1000 Mbps)
-FOG NODES (2,000 MIPS each):
-  • Besiktas (750, 750)
-  • Sisli (250, 750)
-  • Kadikoy (750, 250)
-  • Uskudar (250, 250)
-  ↕ Edge WiFi (100 Mbps)
-VEHICLES (50) → YOLOv5 object detection
-  ↕ 4G LTE (30 Mbps avg)
-```
-
-### Task Workflow (YOLOv5 Pipeline)
-
-```
-CAPTURE (15ms) → PREPROCESS (80ms) → FEATURE_EXTRACT (5ms)
-  → CLASSIFY (3ms) → ALERT (5ms)
-
-Total: ~108ms per frame
-Deadline: 200ms end-to-end
-```
-
----
-
-## 🧠 Machine Learning System
-
-### Agent 1: Task Placement
-
-- **Input:** 13D state (loads, bandwidth, speed, deadline)
-- **Output:** 5 actions (Fog-A/B/C/D or Cloud)
-- **Status:** ✅ Pre-trained (behavioral cloning, loss: 1.5000)
-
-### Agent 2: SDN Routing
-
-- **Input:** Network state + congestion
-- **Output:** 5 routing strategies
-- **Status:** ✅ Initialized (ready for online learning)
-
-### Optimization: NSGA-II + Behavioral Cloning
-
-- **Objectives:** Minimize energy & latency
-- **Training:** 500 pairs from NSGA-II
-- **Convergence:** Verified
-
----
-
-## 📊 Real-World Datasets
-
-### 1. CARLA Vehicle Trajectories
-
-- **Coverage:** Istanbul 1km × 1km grid
-- **Vehicles:** 10 simulated
-- **Duration:** 100 seconds
-- **Export:** 930 KB CSV with position, speed, heading
-
-### 2. YOLOv5 Detection Benchmarks
-
-| Model   | GPU Latency  |
-| ------- | ------------ |
-| YOLOv5n | 2.5ms        |
-| YOLOv5s | 5.0ms ← Used |
-| YOLOv5m | 10.0ms       |
-| YOLOv5l | 20.0ms       |
-| YOLOv5x | 40.0ms       |
-
-### 3. CRAWDAD Network Traces
-
-- **Urban 4G:** 34.1 Mbps (σ=8.3)
-- **Edge WiFi:** 100.3 Mbps (σ=15.2)
-- **Backbone:** 999.9 Mbps (σ=0.1)
-- **Export:** 171 KB time-series CSV
-
----
-
-## ⚙️ Configuration
-
-### Default Parameters (Testing Mode)
-
-```python
-# In config.py:
-NSGA_POP_SIZE = 100         # Population
-NSGA_GENS = 50              # Generations
-N_OFFLINE_BATCHES = 50      # Quick test
-
-# Network (Mbps)
-VEHICLE_TO_FOG_BW = 30      # 4G LTE
-FOG_TO_FOG_BW = 100         # Edge WiFi
-FOG_TO_CLOUD_BW = 1000      # Fiber
-```
-
-### For Thesis Submission (Restore)
-
-```python
-# Production mode:
-NSGA_POP_SIZE = 200
-NSGA_GENS = 200
-N_OFFLINE_BATCHES = 1000
-N_RUNS = 5                  # Statistical validity
-```
-
----
-
-## 📈 Development Status
-
-| Component                      | Status         |
-| ------------------------------ | -------------- |
-| Framework (10 files, 1.8K LOC) | ✅ Complete    |
-| Real-world data integration    | ✅ Complete    |
-| SimPy event loop               | ✅ Complete    |
-| Baseline systems               | ✅ Implemented |
-| Results & visualization        | ✅ Ready       |
-| System production ready        | ✅ Deployed    |
-
----
-
-## 📚 Documentation
-
-**Complete Technical Guide:** See `explanation.md`
-
-**Covers:**
-
-- ✅ System architecture & 3-tier design
-- ✅ Core components (NSGA-II, DQN, etc.)
-- ✅ Real-world dataset specifications
-- ✅ Pre-training validation results
-- ✅ Configuration guidelines
-- ✅ Module reference
-- ✅ Troubleshooting guide
-
----
-
-## 🔧 Requirements
-
-**Hardware:**
-
-- Minimum: 4 GB RAM, 2-core CPU
-- Recommended: 8 GB RAM, 4-core CPU
-- GPU optional (for baseline comparisons)
-
-**Software:**
-
-```
-Python 3.8+
-PyTorch 1.10+
-PyMOO 0.5+
-NumPy, Pandas, Matplotlib
-Gymnasium 0.26+
-SimPy 4.0+
-```
-
-**Install all dependencies:**
+### Install
 
 ```bash
+cd implementation
 pip install -r requirements.txt
 ```
 
----
-
-## 🎓 Research Contributions
-
-1. **Hybrid Optimization + ML:** Combines classical NSGA-II with modern DQN
-2. **Real-World Integration:** Uses actual vehicle data, detection benchmarks, and network traces
-3. **Istanbul-Focused:** Specific topology for smart city deployment
-4. **Behavioral Cloning:** Fast pre-training from optimization solutions
-5. **Comprehensive Metrics:** 7 performance indicators with real-time collection
-
----
-
-## 📝 How to Use
-
-### For Research
+### Run offline pre-training
 
 ```bash
-# Run complete system with real data
 python main.py
-
-# View simulation results
-cat results/carla_trajectories.csv
-cat results/network_bandwidth.csv
-
-# Access metrics and analysis functions
-python -c "from results.metrics import SimMetrics; print('Metrics ready')"
 ```
 
-### For Production Use
+What it does:
 
-**Test individual components:**
+1. Generates CARLA-like trajectories and exports CSV
+2. Generates bandwidth traces and exports CSV
+3. Runs NSGA-II batches on realistic task samples
+4. Produces training pairs and pre-trains Agent 1
+
+---
+
+## Pre-training & validation
+
+### NSGA-II offline batches
+
+The offline pre-training loop in `main.py` runs for `n_batches` (default: 50). Each batch builds a small set of pebble steps (currently capped to 10) and runs NSGA-II to produce a knee-point solution.
+
+Training pairs:
+
+- Approx. `n_batches × N_steps_per_batch`
+- With the current defaults in `main.py`, this is typically around `50 × 10 = 500` pairs.
+
+### Behavioral cloning (Agent 1)
+
+After pairs are generated, Agent 1 is trained with supervised learning (`CrossEntropyLoss`) for a small number of epochs (default in `main.py`: 3).
+
+Sanity checks included in the current pipeline:
+
+- CSV exports are created under `results/`
+- The optimizer runs end-to-end and returns Pareto solutions
+- Agent 1 can train on the extracted (state, action) pairs
+
+---
+
+## Module reference (examples)
+
+### Run TOF classification on a DAG task
 
 ```python
-from datasets import TrajectoryGenerator
+from broker.tof_broker import TOFBroker
+from environment.task import generate_dag_task
+
+task = generate_dag_task(task_id="t1", vehicle_id="vehicle_000", sim_time=0.0, spatial_tag={})
+broker = TOFBroker()
+result = broker.process_dag(task)
+print(len(result["boulders"]), len(result["pebbles"]))
+```
+
+### Run NSGA-II optimization and extract training pairs
+
+```python
+import numpy as np
+from optimizer.nsga2_mmde import run_nsga2_mmde, extract_training_pairs
+from environment.task import DAGStep
+from config import FOG_MIPS
+
+fog_states = {"A": 0.3, "B": 0.4, "C": 0.35, "D": 0.25, "bandwidth_util": 0.5}
+pebble_steps = [
+  DAGStep(step_id=3, MI=2000, in_KB=50, out_KB=30, name="Feature", deadline_ms=80),
+]
+pebble_steps[0].ec = pebble_steps[0].MI / FOG_MIPS
+
+pareto = run_nsga2_mmde(pebble_steps, fog_states)
+pairs = extract_training_pairs(pebble_steps, fog_states, pareto)
+print(pairs[0]["state"].shape, pairs[0]["action"])
+```
+
+### Use Agent 1 to select an offloading action
+
+```python
 from agents.agent1 import Agent1
-from optimizer.nsga2_mmde import run_nsga2_mmde
 
-# Test trajectories
-gen = TrajectoryGenerator(num_vehicles=5)
-print(f"Generated {len(gen.generate_fleet())} trajectories")
-
-# Pre-train Agent 1
-agent1 = Agent1()
-agent1.pretrain(training_pairs, epochs=3)
+agent = Agent1()
+action = agent.select_action(pairs[0]["state"])
+print("action:", action)
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## Configuration
 
-| Issue              | Solution                           |
-| ------------------ | ---------------------------------- |
-| "Module not found" | `pip install -r requirements.txt`  |
-| Slow execution     | Reduce `NSGA_GENS` in config.py    |
-| Memory error       | Lower `N_OFFLINE_BATCHES`          |
-| CSV export fails   | Ensure `results/` directory exists |
+Key parameters live in `config.py`. Common knobs:
 
-See `explanation.md` for detailed troubleshooting.
+- Compute: `FOG_MIPS`, `CLOUD_MIPS`
+- Network: `BANDWIDTH_MBPS`, `FOG_FOG_BW`, `FOG_CLOUD_BW`, `WAN_LATENCY_MS`, `G5_LATENCY_MS`
+- Optimization: `NSGA_POP_SIZE`, `NSGA_GENS`, `NSGA_BATCH_SIZE`, `N_OFFLINE_BATCHES`
+- Simulation: `SIM_DURATION_S`, `N_VEHICLES`, `TASK_RATE_HZ`
+
+For faster runs, reduce `NSGA_POP_SIZE`, `NSGA_GENS`, and the `n_batches` argument passed to `run_offline_pretraining()` in `main.py`.
 
 ---
 
-## 📍 Publications & Datasets
+## Metrics
 
-**Real Data Sources:**
+Collected metrics are defined in `results/metrics.py` (`SimMetrics`):
+
+- Avg / P95 latency (ms)
+- Avg / total energy (J)
+- Feasibility rate (deadline met fraction)
+- Handoff success rate (when simulated)
+- Fog utilization
+- SDN preinstall hit rate
+- Boulder rate
+
+---
+
+## Expected results (targets)
+
+The following are _target outcomes after the full end-to-end simulation, baselines, and evaluation pipeline are implemented_:
+
+| System               | Avg latency | Feasibility | Energy | Handoff success |
+| -------------------- | ----------: | ----------: | -----: | --------------: |
+| Baseline 1 (NSGA-II) |      ~850ms |        ~45% | ~0.28J |            ~51% |
+| Baseline 2 (TOF)     |      ~620ms |        ~62% | ~0.22J |            ~54% |
+| Baseline 3 (MMDE)    |      ~480ms |        ~74% | ~0.19J |            ~57% |
+| Proposed system      |  ~210–280ms |     ~88–93% | ~0.16J |         ~91–95% |
+
+---
+
+## Implementation status (accurate to this repo)
+
+This section reflects the current code in this repository (some modules are scaffolds/placeholders).
+
+### Implemented (Week 1 core)
+
+- ✅ Configuration (`config.py`)
+- ✅ DAG task definition (`environment/task.py`)
+- ✅ TOF broker classification (`broker/tof_broker.py`)
+- ✅ NSGA-II optimizer + training-pair extraction (`optimizer/nsga2_mmde.py`)
+- ✅ DQN network + replay buffer (`agents/dqn.py`)
+- ✅ Agent 1 & Agent 2 DQN implementations (`agents/agent1.py`, `agents/agent2.py`)
+- ✅ Handoff predictor + HTB buffer (`mobility/handoff.py`)
+- ✅ Metrics container (`results/metrics.py`)
+- ✅ Offline pre-training pipeline + dataset exports (`main.py`, `datasets.py`)
+
+### Partially implemented / scaffolds
+
+- ◻ Fog node queueing: `environment/fog_node.py` (`process_task` is not implemented)
+- ◻ Cloud processing: `environment/cloud.py` (`process_task` is not implemented)
+- ◻ SimPy integration: `simulation/runner.py` is a placeholder
+- ◻ Gymnasium env: `simulation/env.py` is a minimal stub
+- ◻ Baselines: `baselines/baseline1.py`, `baseline2.py`, `baseline3.py` are placeholders
+- ◻ Plots: `results/plots.py` is a placeholder
+- ◻ SDN controller abstraction: `sdn/controller.py` has stubbed methods
+
+---
+
+## Next steps
+
+Planned work (from the project summary):
+
+1. Implement SimPy event loop (`simulation/runner.py`)
+2. Implement fog/cloud processing and queueing (`environment/fog_node.py`, `environment/cloud.py`)
+3. Implement baselines and evaluation (`baselines/`, `results/plots.py`)
+4. Integrate SDN controller and connect Agent 2 to routing decisions (`sdn/controller.py`)
+
+---
+
+## Troubleshooting
+
+| Issue                 | Fix                                                      |
+| --------------------- | -------------------------------------------------------- |
+| `ModuleNotFoundError` | `pip install -r requirements.txt`                        |
+| Slow optimization     | Reduce `NSGA_GENS` / `NSGA_POP_SIZE` / number of batches |
+| CSV export fails      | Ensure `implementation/results/` exists                  |
+
+---
+
+## References
 
 - CARLA: https://github.com/carla-simulator/carla
 - YOLOv5: https://github.com/ultralytics/yolov5
 - CRAWDAD: https://crawdad.org/
 
-**Thesis-Ready:** All data integrated with proper citations
-
 ---
 
-## 🎯 System Features
+## License
 
-1. **Discrete-Event Simulation:** Complete SimPy integration for vehicular networks
-2. **Comprehensive Baselines:** Multiple comparison systems included
-3. **Publication-Ready Figures:** All visualization components available
-4. **Production Deployment:** Full system ready for deployment
-
----
-
-## 📄 License
-
-MIT License - See project documentation
-
----
-
-## 👨‍💼 About
-
-**Research Focus:** IoT-Fog-Cloud task offloading for smart city vehicular networks
-
-**Key Innovation:** Hybrid NSGA-II + DQN approach with real-world datasets for Istanbul urban infrastructure
-
-**Status:** Production-ready framework, ready for academic publication
-
----
-
-**Production Status:** ✅ Fully Operational  
-**System Version:** 1.0 - Professional Release  
-**For detailed technical documentation:** See `explanation.md`
+MIT License (see repository/license information).
