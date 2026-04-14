@@ -51,14 +51,17 @@ class TrajectoryPredictor:
         future_x = vehicle_pos[0] + vehicle_speed_ms * np.cos(heading_rad) * t_exit
         future_y = vehicle_pos[1] + vehicle_speed_ms * np.sin(heading_rad) * t_exit
 
+        best_id = None
+        best_dist = 1e18
         for fog_id, fog_data in FOG_NODES.items():
             if fog_id == current_fog:
                 continue
             dist = self.compute_distance((future_x, future_y), fog_data['pos'])
-            if dist <= FOG_COVERAGE_RADIUS:
-                return fog_id
+            if dist <= FOG_COVERAGE_RADIUS and dist < best_dist:
+                best_dist = dist
+                best_id = fog_id
 
-        return 'CLOUD'  # no fog zone found at predicted position
+        return best_id if best_id else 'CLOUD'  # no fog zone found at predicted position
 
     def select_mode(self, t_exit: float, t_exec: float) -> str:
         """Select handoff mode based on execution time and exit time."""

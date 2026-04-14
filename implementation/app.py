@@ -611,11 +611,25 @@ class UnifiedSmartCityApp:
     def _vehicle_move(self, vehicle: Dict):
         traj = vehicle.get("traj") or []
         if traj:
-            next_idx = (int(vehicle.get("traj_idx", 0)) + 1) % len(traj)
-            p = traj[next_idx]
+            idx = int(vehicle.get("traj_idx", 0))
+            direction = int(vehicle.get("traj_dir", 1))
+            if len(traj) < 2:
+                p = traj[0]
+                next_idx = 0
+            else:
+                next_idx = idx + direction
+                if next_idx >= len(traj) or next_idx < 0:
+                    direction *= -1
+                    next_idx = idx + direction
+                next_idx = int(np.clip(next_idx, 0, len(traj) - 1))
+                p = traj[next_idx]
+
             vehicle["traj_idx"] = next_idx
-            vehicle["x"] = float(p["x"])
-            vehicle["y"] = float(p["y"])
+            vehicle["traj_dir"] = direction
+
+            # Clamp to the visible map bounds to avoid edge jitter.
+            vehicle["x"] = float(np.clip(float(p["x"]), 20.0, 980.0))
+            vehicle["y"] = float(np.clip(float(p["y"]), 20.0, 980.0))
             vehicle["heading"] = float(p["heading_deg"])
             vehicle["speed_kmh"] = float(p["speed_kmh"])
             vehicle["speed_ms"] = vehicle["speed_kmh"] * (1000.0 / 3600.0)
@@ -645,15 +659,16 @@ class UnifiedSmartCityApp:
         return float(trace[idx])
 
     def _nearest_fog(self, x: float, y: float) -> str:
-        best_id = "A"
+        best_id = None
         best_dist = 1e18
+        r2 = float(FOG_COVERAGE_RADIUS) ** 2
         for fog_id, fog in FOG_NODES.items():
             fx, fy = fog["pos"]
-            d = (x - fx) ** 2 + (y - fy) ** 2
-            if d < best_dist:
-                best_dist = d
+            d2 = (x - fx) ** 2 + (y - fy) ** 2
+            if d2 <= r2 and d2 < best_dist:
+                best_dist = d2
                 best_id = fog_id
-        return best_id
+        return best_id if best_id else "CLOUD"
 
     def _build_agent1_state(self, vehicle: Dict, step_mi: int, deadline_remaining_ms: float) -> np.ndarray:
         loads = []
@@ -664,11 +679,15 @@ class UnifiedSmartCityApp:
 
         bw = self._bandwidth_at_simtime()
         bw_util = float(np.clip(1.0 - (bw / 120.0), 0.05, 1.0))
-        t_exit = self.predictor.compute_t_exit(
-            (vehicle["x"], vehicle["y"]), vehicle["speed_ms"], vehicle["heading"], self._nearest_fog(vehicle["x"], vehicle["y"])
-        )
-        if t_exit == float("inf"):
-            t_exit = 10.0
+        ingress = self._nearest_fog(vehicle["x"], vehicle["y"])
+        if ingress == "CLOUD":
+            t_exit = 0.0
+        else:
+            t_exit = self.predictor.compute_t_exit(
+                (vehicle["x"], vehicle["y"]), vehicle["speed_ms"], vehicle["heading"], ingress
+            )
+            if t_exit == float("inf"):
+                t_exit = 10.0
 
         vec = np.array(
             [
@@ -750,6 +769,7 @@ class UnifiedSmartCityApp:
     ) -> tuple:
         """Execute one remote offloading unit (single step or super-task)."""
         src_zone = self._nearest_fog(vehicle["x"], vehicle["y"])
+        src_for_sdn = src_zone if src_zone != "CLOUD" else "VEHICLE"
         s2 = self._build_agent2_state()
         a2 = self.agent2.select_action(s2)
         policy_features = self.fog_policy.current_bundle.get("rules", {}).get("features", {}) if self.fog_policy.current_bundle else {}
@@ -763,7 +783,7 @@ class UnifiedSmartCityApp:
 
         relay_info = None
         network_info = None
-        if destination == "CLOUD" and enable_relay:
+        if destination == "CLOUD" and enable_relay and src_zone != "CLOUD":
             cb_open = self.sdn_circuit_breaker.is_open(int(self.sim_time)) if enable_circuit_breaker else False
             if cb_open and enable_store_forward:
                 self.fog_store_forward.push(
@@ -784,7 +804,7 @@ class UnifiedSmartCityApp:
                     "total_delay_ms": 15.0,
                 }
             else:
-                relay_info = self._network_delay_ms(a2, src_zone, "CLOUD", f"{unit_id}:relay", payload_kb=unit_in_kb)
+                relay_info = self._network_delay_ms(a2, src_for_sdn, "CLOUD", f"{unit_id}:relay", payload_kb=unit_in_kb)
                 if relay_info.get("packet_drop", False):
                     self.sdn_circuit_breaker.on_failure(int(self.sim_time))
                     if enable_store_forward:
@@ -818,7 +838,7 @@ class UnifiedSmartCityApp:
             self.relay_fog_to_cloud_total_ms += float(relay_info.get("total_delay_ms", 0.0))
             self.relay_count += 1
         else:
-            network_info = self._network_delay_ms(a2, src_zone, destination, unit_id, payload_kb=unit_in_kb)
+            network_info = self._network_delay_ms(a2, src_for_sdn, destination, unit_id, payload_kb=unit_in_kb)
             net_delay_ms = float(network_info.get("total_delay_ms", 0.0))
 
         if destination == "CLOUD":
@@ -848,7 +868,7 @@ class UnifiedSmartCityApp:
         self._record_agent_reward("agent2", reward2)
         self._record_agent_update("agent2")
 
-        if destination == "CLOUD" and enable_relay:
+        if destination == "CLOUD" and enable_relay and src_zone != "CLOUD":
             fog_x, fog_y = FOG_NODES[src_zone]["pos"]
             offloads.append(
                 {
@@ -1006,19 +1026,27 @@ class UnifiedSmartCityApp:
                 s1 = self._build_agent1_state(vehicle, step.MI, deadline_remaining)
                 a1 = self.agent1.select_action(s1)
                 destination = self._destination_from_action(a1)
-                if destination == "CLOUD":
-                    destination = self._nearest_fog(vehicle["x"], vehicle["y"])
+
+                # If the vehicle is not currently covered by any fog node, avoid "connecting" to far fog.
+                if ingress_fog == "CLOUD":
+                    destination = "CLOUD"
+                elif destination == "CLOUD":
+                    destination = ingress_fog
 
                 self.agent_stats["agent1"]["decisions"]["fog"] += 1
 
-                t_exit = self.predictor.compute_t_exit(
-                    (vehicle["x"], vehicle["y"]), vehicle["speed_ms"], vehicle["heading"], destination
-                )
-                if t_exit == float("inf"):
-                    t_exit = 10.0
-                fog_load = float(np.clip(FOG_NODES[destination].get("load", 0.3) + np.random.uniform(-0.1, 0.1), 0.05, 0.95))
-                t_exec = self.predictor.compute_t_exec(step.MI, destination, fog_load)
-                mode = self.predictor.select_mode(t_exit, t_exec)
+                if destination == "CLOUD":
+                    t_exit = 0.0
+                    mode = "DIRECT"
+                else:
+                    t_exit = self.predictor.compute_t_exit(
+                        (vehicle["x"], vehicle["y"]), vehicle["speed_ms"], vehicle["heading"], destination
+                    )
+                    if t_exit == float("inf"):
+                        t_exit = 10.0
+                    fog_load = float(np.clip(FOG_NODES[destination].get("load", 0.3) + np.random.uniform(-0.1, 0.1), 0.05, 0.95))
+                    t_exec = self.predictor.compute_t_exec(step.MI, destination, fog_load)
+                    mode = self.predictor.select_mode(t_exit, t_exec)
 
                 if mode == "PROACTIVE":
                     next_fog = self.predictor.predict_next_fog(

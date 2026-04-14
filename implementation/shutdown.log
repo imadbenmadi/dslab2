@@ -1,21 +1,4 @@
  
-[Tue 04/14/2026  0:30:54.93] STOP.bat invoked 
-[Tue 04/14/2026  0:30:54.94] Stopping backend PID 5200 
-SUCCESS: The process with PID 22892 (child process of PID 5200) has been terminated.
-SUCCESS: The process with PID 5200 (child process of PID 22652) has been terminated.
-[Tue 04/14/2026  0:30:55.10] Stopping frontend PID 2476 
-SUCCESS: The process with PID 19408 (child process of PID 2476) has been terminated.
-SUCCESS: The process with PID 20064 (child process of PID 2476) has been terminated.
-SUCCESS: The process with PID 2476 (child process of PID 18736) has been terminated.
-time="2026-04-14T00:30:55+02:00" level=warning msg="C:\\Users\\imed\\Desktop\\dslab2\\implementation\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
- Container smartcity-timescaledb  Stopping
- Container smartcity-redis  Stopping
- Container smartcity-redis  Stopped
- Container smartcity-redis  Removing
- Container smartcity-redis  Removed
- Container smartcity-timescaledb  Stopped
- Container smartcity-timescaledb  Removing
- Container smartcity-timescaledb  Removed
- Network implementation_default  Removing
- Network implementation_default  Removed
-[Tue 04/14/2026  0:30:55.27] docker compose down OK 
+[Tue 04/14/2026  0:36:41.41] STOP.bat invoked 
+time="2026-04-14T00:36:41+02:00" level=warning msg="C:\\Users\\imed\\Desktop\\dslab2\\implementation\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+[Tue 04/14/2026  0:36:41.47] docker compose down OK 

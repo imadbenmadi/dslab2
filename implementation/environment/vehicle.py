@@ -25,11 +25,26 @@ class Vehicle:
         heading_rad = np.radians(self.heading_deg)
         dx = speed_ms * np.cos(heading_rad) * dt
         dy = speed_ms * np.sin(heading_rad) * dt
-        
-        # Wrap around grid boundaries
-        new_x = (self.position[0] + dx) % 1000
-        new_y = (self.position[1] + dy) % 1000
-        self.position = (new_x, new_y)
+
+        new_x = self.position[0] + dx
+        new_y = self.position[1] + dy
+
+        # Reflect at boundaries to avoid teleporting across the city.
+        if new_x < 0:
+            new_x = 0.0
+            self.heading_deg = (180.0 - self.heading_deg) % 360
+        elif new_x > 1000:
+            new_x = 1000.0
+            self.heading_deg = (180.0 - self.heading_deg) % 360
+
+        if new_y < 0:
+            new_y = 0.0
+            self.heading_deg = (-self.heading_deg) % 360
+        elif new_y > 1000:
+            new_y = 1000.0
+            self.heading_deg = (-self.heading_deg) % 360
+
+        self.position = (float(new_x), float(new_y))
     
     def generate_task(self, task_id: str, sim_time: float) -> Optional[object]:
         """

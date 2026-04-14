@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.leaflet-container {
+    @apply bg-slate-100;
+}
+
+.pcnme-fog-marker {
+    @apply stroke-blue-600 fill-blue-300;
+}
+
+.pcnme-vehicle-marker {
+    @apply stroke-green-700 fill-green-300;
+}

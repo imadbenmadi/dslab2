@@ -1,18 +1,18 @@
  
-[Tue 04/14/2026  0:29:06.55] START.bat invoked 
-[Tue 04/14/2026  0:29:07.28] Toolchain OK 
-time="2026-04-14T00:29:07+02:00" level=warning msg="C:\\Users\\imed\\Desktop\\dslab2\\implementation\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
+[Tue 04/14/2026  0:36:52.55] START.bat invoked 
+[Tue 04/14/2026  0:36:53.33] Toolchain OK 
+time="2026-04-14T00:36:53+02:00" level=warning msg="C:\\Users\\imed\\Desktop\\dslab2\\implementation\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
  Network implementation_default  Creating
  Network implementation_default  Created
- Container smartcity-timescaledb  Creating
  Container smartcity-redis  Creating
- Container smartcity-timescaledb  Created
+ Container smartcity-timescaledb  Creating
  Container smartcity-redis  Created
+ Container smartcity-timescaledb  Created
  Container smartcity-redis  Starting
  Container smartcity-timescaledb  Starting
  Container smartcity-redis  Started
  Container smartcity-timescaledb  Started
-[Tue 04/14/2026  0:29:07.33] Infra startup OK 
+[Tue 04/14/2026  0:36:53.40] Infra startup OK 
 Requirement already satisfied: numpy>=1.21.0 in c:\users\imed\appdata\roaming\python\python310\site-packages (from -r requirements.txt (line 1)) (2.2.6)
 Requirement already satisfied: pandas>=1.3.0 in c:\users\imed\appdata\local\programs\python\python310\lib\site-packages (from -r requirements.txt (line 2)) (2.3.3)
 Requirement already satisfied: matplotlib>=3.4.0 in c:\users\imed\appdata\local\programs\python\python310\lib\site-packages (from -r requirements.txt (line 3)) (3.10.7)

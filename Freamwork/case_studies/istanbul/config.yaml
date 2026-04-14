@@ -1,0 +1,32 @@
+case_study: istanbul
+
+# NOTE: This is a minimal topology stub for Phase 1 (offline optimizer pretrain).
+# Coordinates are in meters in an abstract 2D plane.
+
+fog_coverage_radius: 250
+
+fog_nodes:
+    - id: FogA
+      name: Fog A
+      pos: [100, 100]
+      mips: 2000
+      initial_load: 0.30
+    - id: FogB
+      name: Fog B
+      pos: [900, 120]
+      mips: 2000
+      initial_load: 0.35
+    - id: FogC
+      name: Fog C
+      pos: [160, 860]
+      mips: 2000
+      initial_load: 0.28
+    - id: FogD
+      name: Fog D
+      pos: [920, 880]
+      mips: 2000
+      initial_load: 0.40
+
+cloud:
+    name: Cloud
+    MIPS: 8000

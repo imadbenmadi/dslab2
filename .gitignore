@@ -1,3 +1,15 @@
 node_modules
 __pycache__
 build
+
+# Python venvs
+.venv/
+venv/
+
+# Pytest
+.pytest_cache/
+
+# PCNME outputs
+results/
+results_*/
+*.log
