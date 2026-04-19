@@ -97,11 +97,23 @@ class PCNMESimulator:
 
         # Execute each step
         for step_id in [2, 3, 4, 5]:
-            # Skip step 1 (always device-local)
+            # Skip step 1 (always device-local) and step 4 (always cloud, not recorded)
             if step_id == 1:
                 continue
+            
+            # Step 4 is boulder - execute it but don't record destination decision
+            if step_id == 4:
+                destination = 'cloud'
+                exec_result = self.env.execute_task(
+                    task_id, step_id, destination, vehicle_id
+                )
+                results[f'step{step_id}_latency_ms'] = exec_result['latency_ms']
+                results[f'step{step_id}_energy_j'] = exec_result['energy_j']
+                total_latency += exec_result['latency_ms']
+                total_energy += exec_result['energy_j']
+                continue
 
-            # Select destination
+            # Select destination for pebbles/boulders with decisions (steps 2, 3, 5)
             destination = self.system.select_destination(
                 step_id, vehicle_id, fog_state
             )
