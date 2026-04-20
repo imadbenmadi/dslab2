@@ -9,12 +9,14 @@ import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
 from collections import deque
+import warnings
 from .constants import (
     STATE_DIM, ACTION_DIM, HIDDEN, AGENT_LR, GAMMA,
     EPSILON_START, EPSILON_MIN, EPSILON_DECAY, MINI_BATCH,
     BUFFER_SIZE, TARGET_SYNC, HUBER_DELTA
 )
 from .formulas import build_state, compute_reward, td_target, bc_loss
+from .progress import progress
 
 
 class DQNNetwork(nn.Module):
@@ -228,7 +230,8 @@ class DQNAgent:
         dataset_size = len(dataset)
         self.bc_loss_history = []
 
-        for epoch in range(epochs):
+        epoch_iter = progress(range(epochs), desc="BC pretrain", unit="epoch", total=epochs)
+        for epoch in epoch_iter:
             epoch_loss = 0.0
             n_batches = 0
 
@@ -264,6 +267,9 @@ class DQNAgent:
             avg_loss = epoch_loss / max(n_batches, 1)
             self.bc_loss_history.append(avg_loss)
 
+            if hasattr(epoch_iter, "set_postfix"):
+                epoch_iter.set_postfix(loss=f"{avg_loss:.4f}")
+
             if (epoch + 1) % 5 == 0:
                 print(f"BC Epoch {epoch + 1}/{epochs}, Loss: {avg_loss:.6f}")
 
@@ -273,8 +279,16 @@ class DQNAgent:
 
     def load_weights(self, filepath):
         """Load network weights."""
-        self.online_net.load_state_dict(torch.load(filepath))
-        self.target_net.load_state_dict(torch.load(filepath))
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r"TypedStorage is deprecated.*",
+                category=UserWarning,
+            )
+            state_dict = torch.load(filepath)
+
+        self.online_net.load_state_dict(state_dict)
+        self.target_net.load_state_dict(state_dict)
 
     def get_q_values(self, state):
         """Get Q-values for a state."""

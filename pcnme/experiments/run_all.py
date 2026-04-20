@@ -14,6 +14,7 @@ import numpy as np
 from pathlib import Path
 from datetime import datetime
 import sys
+from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -23,6 +24,7 @@ from pcnme import (
     DQNAgent, SEEDS, SCENARIO_SPEEDS,
     N_VEHICLES, SIM_DURATION_S, WARMUP_S, DAG
 )
+from pcnme.progress import progress
 
 
 class PCNMESimulator:
@@ -156,7 +158,7 @@ class PCNMESimulator:
         record = TaskRecord(**results)
         return record
 
-    def run_scenario(self, scenario: str, seed: int, n_vehicles: int = None):
+    def run_scenario(self, scenario: str, seed: int, n_vehicles: Optional[int] = None):
         """
         Run complete simulation for one scenario.
 
@@ -184,28 +186,33 @@ class PCNMESimulator:
 
         # Simulation loop
         print(f"  Running simulation (duration: {SIM_DURATION_S}s)...")
-        while self.env.sim_time_s < SIM_DURATION_S:
-            # Generate tasks for active vehicles
-            for vehicle_id in self.env.vehicles:
-                # One task per vehicle per 10 seconds
-                if int(self.env.sim_time_s) % 10 == 0:
-                    task_id = f"{scenario}_{seed}_{vehicle_id}_{task_counter}"
+        pbar = progress(
+            total=int(SIM_DURATION_S),
+            desc=f"{scenario} seed={seed}",
+            unit="s",
+            leave=False,
+        )
+        try:
+            while self.env.sim_time_s < SIM_DURATION_S:
+                # Generate tasks for active vehicles
+                for vehicle_id in self.env.vehicles:
+                    # One task per vehicle per 10 seconds
+                    if int(self.env.sim_time_s) % 10 == 0:
+                        task_id = f"{scenario}_{seed}_{vehicle_id}_{task_counter}"
 
-                    record = self.run_single_task(
-                        vehicle_id, task_id, scenario, seed
-                    )
+                        record = self.run_single_task(
+                            vehicle_id, task_id, scenario, seed
+                        )
 
-                    if record:
-                        task_records.append(record)
-                        task_counter += 1
+                        if record:
+                            task_records.append(record)
+                            task_counter += 1
 
-            # Step environment
-            self.env.step()
-
-            # Progress
-            if int(self.env.sim_time_s) % 60 == 0:
-                print(f"    {self.env.sim_time_s:.0f}s / {SIM_DURATION_S}s "
-                      f"({task_counter} tasks)")
+                # Step environment
+                self.env.step()
+                pbar.update(1)
+        finally:
+            pbar.close()
 
         print(f"  ✓ Completed: {len(task_records)} task records")
         return task_records
@@ -247,6 +254,8 @@ def main():
     total_tasks = len(args.systems) * len(args.scenarios) * len(SEEDS)
     completed_tasks = 0
 
+    runs_pbar = progress(total=total_tasks, desc="All runs", unit="run")
+
     start_time = datetime.now()
 
     # Loop: systems × scenarios × seeds
@@ -286,10 +295,13 @@ def main():
                     metrics_collector.add_record(record)
 
                 completed_tasks += 1
+                runs_pbar.update(1)
                 elapsed = (datetime.now() - start_time).total_seconds()
                 print(f" {len(task_records)} tasks | "
                       f"{completed_tasks}/{total_tasks} | "
                       f"Elapsed: {elapsed/60:.1f}m")
+
+    runs_pbar.close()
 
     # Save results
     print(f"\nSaving {len(metrics_collector.records)} records to {args.output}")

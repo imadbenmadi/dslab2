@@ -83,7 +83,7 @@ python make_charts.py \
     --dpi 300
 ```
 
-Generates 9 publication-quality figures (PDF + PNG).
+Generates 4 publication-quality figures (PDF + PNG).
 
 ### 5. Verification
 

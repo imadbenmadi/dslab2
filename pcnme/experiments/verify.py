@@ -14,8 +14,8 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from pcnme import MetricsCollector
-from pcnme.formulas import compute_ec, compute_t_exit
-from pcnme.constants import FOG_NODES, FOG_RADIUS
+from pcnme.formulas import compute_t_exit
+from pcnme.progress import progress
 
 
 def verify_results(records):
@@ -33,9 +33,9 @@ def verify_results(records):
     # Check 1: EC classification must match the formula
     print("\n[CHECK 1] EC Classification")
     try:
-        for r in records:
-            step3_ec = 2000 / 2000  # = 1.0
-            step4_ec = 8000 / 2000  # = 4.0
+        for r in progress(
+            records, desc="Check 1", unit="record", total=len(records), leave=False
+        ):
             assert r.n_boulders >= 1, "Step 4 and/or 3 must always be boulders"
             assert r.n_pebbles >= 1, "Steps 2 and 5 must always be pebbles"
 
@@ -94,12 +94,13 @@ def verify_results(records):
     # Check 4: T_exit manual verification
     print("\n[CHECK 4] T_exit Calculation Verification")
     try:
-        # Manual verification: vehicle 180m east of Fog A, speed 70 km/h heading east
+        # Manual verification (math convention): 0°=east, 90°=north
+        # Vehicle 180m east of Fog A, speed 70 km/h heading east
         t = compute_t_exit(
-            vehicle_x=320,  # 180m east of Fog A at (200, 500)
+            vehicle_x=380,  # 180m east of Fog A at (200, 500)
             vehicle_y=500,
             speed_ms=70 / 3.6,  # 70 km/h = 19.4 m/s
-            heading_deg=90,  # due east = moving away from Fog A
+            heading_deg=0,  # due east = moving away from Fog A
             fog_x=200,
             fog_y=500,
             fog_radius=250
@@ -117,7 +118,9 @@ def verify_results(records):
     print("\n[CHECK 5] Deadline Consistency")
     try:
         inconsistent = 0
-        for r in records:
+        for r in progress(
+            records, desc="Check 5", unit="record", total=len(records), leave=False
+        ):
             deadline_implied = 1.0 if r.total_latency_ms <= 200.0 else 0.0
             if int(r.deadline_met) != int(deadline_implied):
                 inconsistent += 1
@@ -136,7 +139,9 @@ def verify_results(records):
         invalid_loads = 0
         invalid_queues = 0
 
-        for r in records:
+        for r in progress(
+            records, desc="Check 6", unit="record", total=len(records), leave=False
+        ):
             for node_id in ['A', 'B', 'C', 'D']:
                 load = getattr(r, f'fog_{node_id}_load')
                 queue = getattr(r, f'fog_{node_id}_queue', 0)
@@ -161,7 +166,9 @@ def verify_results(records):
         valid_dests = {'A', 'B', 'C', 'D', 'cloud', None}
         invalid_dests = 0
 
-        for r in records:
+        for r in progress(
+            records, desc="Check 7", unit="record", total=len(records), leave=False
+        ):
             for step in [2, 3, 5]:
                 dest = getattr(r, f'step{step}_dest')
                 if dest not in valid_dests:
@@ -179,7 +186,9 @@ def verify_results(records):
     print("\n[CHECK 8] Data Coverage")
     try:
         system_counts = {}
-        for r in records:
+        for r in progress(
+            records, desc="Check 8", unit="record", total=len(records), leave=False
+        ):
             system_counts[r.system] = system_counts.get(r.system, 0) + 1
 
         print("  System coverage:")

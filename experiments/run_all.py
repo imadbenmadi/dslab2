@@ -17,6 +17,32 @@ from pcnme import (
 )
 
 
+def _resolve_repo_relative(path_str: str, repo_root: Path) -> Path:
+    """Resolve a path relative to the repo root (not the current working dir)."""
+    path = Path(path_str)
+    return path if path.is_absolute() else (repo_root / path).resolve()
+
+
+def _find_weights_file(weights_dir: Path, repo_root: Path) -> Path:
+    """Find the DQN pretrained weights file, with a fallback to pcnme/experiments."""
+    candidate = weights_dir / "dqn_bc_pretrained.pt"
+    if candidate.exists():
+        return candidate
+
+    fallback = repo_root / "pcnme" / "experiments" / "weights" / "dqn_bc_pretrained.pt"
+    if fallback.exists():
+        return fallback
+
+    raise FileNotFoundError(
+        "Pretrained weights not found. Expected one of:\n"
+        f"- {candidate}\n"
+        f"- {fallback}\n\n"
+        "Run `python experiments/pretrain.py` (repo root) or "
+        "`python pcnme/experiments/pretrain.py` to generate the weights, "
+        "or pass `--weights` pointing to the directory containing dqn_bc_pretrained.pt."
+    )
+
+
 def run_simulation(system_type: str, scenario: str, seed: int, n_vehicles: int,
                   weights_path: Path = None) -> list:
     """Run one complete simulation."""
@@ -169,8 +195,9 @@ def main():
                        help="Number of vehicles per scenario")
     args = parser.parse_args()
 
-    output_path = Path(args.output)
-    weights_dir = Path(args.weights)
+    repo_root = Path(__file__).resolve().parent.parent
+    output_path = _resolve_repo_relative(args.output, repo_root)
+    weights_dir = _resolve_repo_relative(args.weights, repo_root)
 
     all_records = []
     total_runs = len(args.systems) * len(args.scenarios) * len(args.seeds)
@@ -182,8 +209,11 @@ def main():
                 run_count += 1
                 print(f"[{run_count}/{total_runs}] Running {system} × {scenario} × seed={seed}")
 
-                weights_path = weights_dir / "dqn_bc_pretrained.pt" if system in \
-                    ["dqn_bc_only", "proposed"] else None
+                weights_path = (
+                    _find_weights_file(weights_dir, repo_root)
+                    if system in ["dqn_bc_only", "proposed"]
+                    else None
+                )
 
                 records = run_simulation(system, scenario, seed,
                                        args.n_vehicles, weights_path)

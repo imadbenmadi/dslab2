@@ -19,9 +19,10 @@ from pcnme import (
     NSGAIIOptimizer, generate_bc_dataset_from_nsga2,
     DQNAgent, STATE_DIM, ACTION_DIM, HIDDEN, BC_THRESHOLD
 )
+from pcnme.progress import progress
 
 
-def generate_bc_dataset(n_batches: int = 1000, batch_size: int = 100):
+def generate_bc_dataset(n_batches: int = 1000, batch_size: int = 100, seed: int = 42):
     """
     Generate behavioral cloning dataset from NSGA-II Pareto-optimal solutions.
     
@@ -41,31 +42,35 @@ def generate_bc_dataset(n_batches: int = 1000, batch_size: int = 100):
     optimizer = NSGAIIOptimizer(n_pop=50, n_gen=30)
     optimizer.optimize()
     
-    print(f"Extracted {len(optimizer.pareto_solutions)} Pareto-optimal solutions")
+    pareto_solutions = np.asarray(optimizer.pareto_solutions)
+
+    print(f"Extracted {len(pareto_solutions)} Pareto-optimal solutions")
     print(f"Generating BC dataset: {n_batches} batches × {batch_size} samples")
     
     dataset = []
-    pareto_solutions = optimizer.pareto_solutions
-    
-    for batch_idx in range(n_batches):
-        if batch_idx % 100 == 0:
-            print(f"  Batch {batch_idx}/{n_batches}")
-        
-        # Generate diverse states
-        states = np.random.rand(batch_size, STATE_DIM)
-        
+    rng = np.random.default_rng(seed)
+
+    batch_iter = progress(
+        range(n_batches),
+        desc="BC dataset",
+        unit="batch",
+        total=n_batches,
+    )
+
+    n_solutions = len(pareto_solutions)
+    n_vars = int(pareto_solutions.shape[1]) if pareto_solutions.ndim == 2 else 1
+
+    for _ in batch_iter:
+        # Generate diverse states in [0,1]
+        states = rng.random((batch_size, STATE_DIM))
+
         # Sample expert actions from Pareto front
-        for state in states:
-            # Randomly select a Pareto-optimal solution as expert
-            expert_idx = np.random.randint(len(pareto_solutions))
-            solution = pareto_solutions[expert_idx]
-            
-            # Convert solution to action (destinations for pebble steps are the actions)
-            # Solution has 2 values: [step2_dest, step5_dest]
-            # Pick one as the action (or use both as indices)
-            action = int(solution[np.random.randint(len(solution))]) % ACTION_DIM
-            
-            dataset.append((state, action))
+        expert_idxs = rng.integers(0, n_solutions, size=batch_size)
+        col_idxs = rng.integers(0, n_vars, size=batch_size)
+        actions = pareto_solutions[expert_idxs, col_idxs] if n_vars > 1 else pareto_solutions[expert_idxs]
+        actions = (actions.astype(int) % ACTION_DIM).tolist()
+
+        dataset.extend((states[i], int(actions[i])) for i in range(batch_size))
     
     print(f"Total dataset size: {len(dataset)} samples from Pareto-optimal solutions")
     return dataset
@@ -125,6 +130,8 @@ def main():
                        help='Output directory for weights')
     parser.add_argument('--epochs', type=int, default=20,
                        help='BC training epochs')
+    parser.add_argument('--seed', type=int, default=42,
+                       help='Random seed for dataset generation')
 
     args = parser.parse_args()
 
@@ -133,7 +140,7 @@ def main():
     print("=" * 70)
 
     # Generate dataset
-    dataset = generate_bc_dataset(n_batches=args.batches)
+    dataset = generate_bc_dataset(n_batches=args.batches, seed=args.seed)
 
     # Pre-train DQN
     agent = pretrain_dqn(dataset, args.output, epochs=args.epochs)

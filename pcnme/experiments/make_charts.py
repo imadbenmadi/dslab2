@@ -1,6 +1,6 @@
 """
 PCNME Results Visualization
-Generates all 9 publication-quality figures.
+Generates publication-quality figures (currently 4: Fig 1/2/3/9).
 
 Usage:
     python experiments/make_charts.py \\
@@ -15,8 +15,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from pcnme import MetricsCollector
-from pcnme.analysis import ResultsAnalyzer
+from pcnme import MetricsCollector, ResultsAnalyzer
+from pcnme.progress import progress
 
 
 def main():
@@ -53,17 +53,16 @@ def main():
     # Generate figures
     print(f"\nGenerating figures to {args.output}...\n")
 
-    print("  Fig 1: Latency CDF...")
-    analyzer.plot_latency_cdf(args.output)
+    figures = [
+        ("Fig 1: Latency CDF", analyzer.plot_latency_cdf),
+        ("Fig 2: Feasibility bars by scenario", analyzer.plot_feasibility_bars),
+        ("Fig 3: Energy-Latency trade-off", analyzer.plot_energy_latency_tradeoff),
+        ("Fig 9: Per-step latency breakdown", analyzer.plot_step_breakdown),
+    ]
 
-    print("  Fig 2: Feasibility bars by scenario...")
-    analyzer.plot_feasibility_bars(args.output)
-
-    print("  Fig 3: Energy-Latency trade-off...")
-    analyzer.plot_energy_latency_tradeoff(args.output)
-
-    print("  Fig 9: Per-step latency breakdown...")
-    analyzer.plot_step_breakdown(args.output)
+    for label, fn in progress(figures, desc="Figures", unit="fig", total=len(figures)):
+        print(f"  {label}...")
+        fn(args.output)
 
     print("\n" + "=" * 70)
     print("Visualization complete!")

@@ -16,8 +16,8 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from pcnme import TaskRecord, MetricsCollector, ResultsAnalyzer
-from pcnme.analysis import ResultsAnalyzer
+from pcnme import MetricsCollector, ResultsAnalyzer
+from pcnme.progress import progress
 
 
 def main():
@@ -64,8 +64,8 @@ def main():
                         'Latency_CI_Upper', 'Feasibility_Mean', 'Feasibility_CI_Lower',
                         'Feasibility_CI_Upper', 'Energy_Mean', 'Energy_CI_Lower',
                         'Energy_CI_Upper'])
-
-        for system in sorted(analyzer.systems):
+        systems = sorted(analyzer.systems)
+        for system in progress(systems, desc="Writing overall summary", unit="system"):
             if system not in metrics:
                 continue
 
@@ -86,7 +86,7 @@ def main():
 
     # By-scenario summary
     scenario_group = {}
-    for record in records:
+    for record in progress(records, desc="Grouping by scenario", unit="record", total=len(records)):
         key = (record.system, record.scenario)
         if key not in scenario_group:
             scenario_group[key] = []
@@ -98,7 +98,10 @@ def main():
         writer.writerow(['System', 'Scenario', 'N_Records', 'Latency_Mean',
                         'Feasibility_Pct', 'Energy_Mean'])
 
-        for (system, scenario), recs in sorted(scenario_group.items()):
+        items = sorted(scenario_group.items())
+        for (system, scenario), recs in progress(
+            items, desc="Writing scenario breakdown", unit="group", total=len(items)
+        ):
             lats = np.array([r.total_latency_ms for r in recs])
             feas = np.mean([1.0 if r.deadline_met else 0.0 for r in recs]) * 100
             engs = np.mean([r.total_energy_j for r in recs])

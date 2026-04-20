@@ -186,7 +186,6 @@ def show_resources():
     print("""
 📖 Documentation:
    - README.md (comprehensive usage guide)
-   - IMPLEMENTATION_SUMMARY.md (complete feature list)
    - Source code is well-documented
 
 📊 Example Commands:

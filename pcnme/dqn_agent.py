@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import warnings
 from pathlib import Path
 from typing import Tuple, List
 
@@ -169,5 +170,13 @@ class DQNAgent:
 
     def load_weights(self, filepath: Path) -> None:
         """Load network weights."""
-        self.online_net.load_state_dict(torch.load(filepath, weights_only=True))
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore",
+                message=r"TypedStorage is deprecated.*",
+                category=UserWarning,
+            )
+            state_dict = torch.load(filepath, weights_only=True)
+
+        self.online_net.load_state_dict(state_dict)
         self.target_net.load_state_dict(self.online_net.state_dict())
