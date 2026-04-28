@@ -38,6 +38,7 @@ Let me now create a comprehensive refactored solution:Now I understand the full 
 After reviewing the `pcnme` folder, methodology, and the old `PCNME_Prompt.md`, I found:
 
 ### Current State:
+
 - **The framework has duplicate structures** (pcnme/pcnme/ nested)
 - **Agent2 exists but is NOT needed** per methodology - network resources are static
 - **Only Agent1 (DQN for task offloading) is required** per your methodology
@@ -57,6 +58,7 @@ After reviewing the `pcnme` folder, methodology, and the old `PCNME_Prompt.md`, 
 ---
 
 # NEW_EXPLANATION.mdBased on my analysis of your project, I understand you need to:
+
 1. **Remove Agent2** (SDN routing) since the network is static
 2. **Keep only Agent1** (task offloading with TOF+MMDE+NSGA2 pre-training)
 3. **Use real datasets** and professional implementation
@@ -86,6 +88,7 @@ PCNME (Predictive Cloud-Native Mobile Edge) is a **deep reinforcement learning f
 ### Key Innovation
 
 The framework combines:
+
 1. **TOF-Broker** with Execution Cost (EC) classification (Boulder/Pebble filtering)
 2. **MMDE-enhanced NSGA-II** multi-objective optimizer for offline training data generation
 3. **Behavioral Cloning pre-training** to seed a DQN agent from Pareto-optimal solutions
@@ -102,36 +105,37 @@ The framework combines:
 ```
 
 ┌────────────────────────────────────────────────────────────┐
-│                       CLOUD SERVER                          │
-│  - Compute: 8000 MIPS (4× fog capacity)                   │
-│  - WAN Latency: 30ms, Bandwidth: 1 Gbps                   │
+│ CLOUD SERVER │
+│ - Compute: 8000 MIPS (4× fog capacity) │
+│ - WAN Latency: 30ms, Bandwidth: 1 Gbps │
 └─────────────────────────┬──────────────────────────────────┘
-                          │
-          ┌───────────────┴───────────────┐
-          │                               │
-┌─────────▼─────────┐           ┌─────────▼─────────┐
-│   FOG NODE A      │◄─────────►│   FOG NODE B      │
-│  Besiktas (200,500)│   Mesh   │  Sisli (500,200)  │
-│  2000 MIPS, R=250m│   100Mbps │  2000 MIPS        │
-└─────────┬─────────┘           └─────────┬─────────┘
-          │                               │
-          │      ┌───────────────┐        │
-          └──────┤   FOG NODE C  ├────────┘
-                 │  Kadikoy      │
-                 │  (800,500)    │
-                 └───────┬───────┘
-                         │
-                ┌────────▼────────┐
-                │   FOG NODE D    │
-                │  Uskudar        │
-                │  (500,800)      │
-                └─────────────────┘
-                         ▲
-                         │
-          ┌──────────────┴──────────────┐
-          │  50 VEHICLES (IoT devices)  │
-          │  5G: 100 Mbps, 2ms latency  │
-          └─────────────────────────────┘
+│
+┌───────────────┴───────────────┐
+│ │
+┌─────────▼─────────┐ ┌─────────▼─────────┐
+│ FOG NODE A │◄─────────►│ FOG NODE B │
+│ Besiktas (200,500)│ Mesh │ Sisli (500,200) │
+│ 2000 MIPS, R=250m│ 100Mbps │ 2000 MIPS │
+└─────────┬─────────┘ └─────────┬─────────┘
+│ │
+│ ┌───────────────┐ │
+└──────┤ FOG NODE C ├────────┘
+│ Kadikoy │
+│ (800,500) │
+└───────┬───────┘
+│
+┌────────▼────────┐
+│ FOG NODE D │
+│ Uskudar │
+│ (500,800) │
+└─────────────────┘
+▲
+│
+┌──────────────┴──────────────┐
+│ 50 VEHICLES (IoT devices) │
+│ 5G: 100 Mbps, 2ms latency │
+└─────────────────────────────┘
+
 ```
 ### 1.2 Static Network Assumption
 
@@ -152,27 +156,29 @@ The framework combines:
 Each vehicle submits tasks modeled as a 5-step DAG (computer vision pipeline):
 ```
 
-Step 1 (DEVICE)  →  Step 2 (PEBBLE)  →  Step 3 (BOULDER)  →  Step 4 (BOULDER)  →  Step 5 (PEBBLE)
-  20 MI               200 MI               2000 MI              8000 MI              50 MI
-  8192 KB → 200 KB → 50 KB → 30 KB → 5 KB → 1 KB
-  [Always on-device]  [Offloadable]       [Cloud only]         [Cloud only]         [Offloadable]
+Step 1 (DEVICE) → Step 2 (PEBBLE) → Step 3 (BOULDER) → Step 4 (BOULDER) → Step 5 (PEBBLE)
+20 MI 200 MI 2000 MI 8000 MI 50 MI
+8192 KB → 200 KB → 50 KB → 30 KB → 5 KB → 1 KB
+[Always on-device] [Offloadable] [Cloud only] [Cloud only] [Offloadable]
+
 ```
 ### 2.2 Execution Cost (EC) Classification
 
 Per the **TOF-Broker** methodology:
 ```
 
-EC(step) = MI / FOG_MIPS = MI / 2000   [seconds]
+EC(step) = MI / FOG_MIPS = MI / 2000 [seconds]
 
-If EC(step) >= θ (threshold = 1.0s):  → BOULDER → route to CLOUD immediately
-If EC(step) < θ:                       → PEBBLE  → queue for DQN placement decision
+If EC(step) >= θ (threshold = 1.0s): → BOULDER → route to CLOUD immediately
+If EC(step) < θ: → PEBBLE → queue for DQN placement decision
+
 ```
 **Classification Results:**
 - Step 1: Device-only (no offloading)
-- Step 2: EC = 200/2000 = 0.10s < 1.0 → **PEBBLE** ✓
+- Step 2: EC = 200/2000 = 0.10s < 1.0 → **PEBBLE** [OK]
 - Step 3: EC = 2000/2000 = 1.0s ≥ 1.0 → **BOULDER** → Cloud
 - Step 4: EC = 8000/2000 = 4.0s ≥ 1.0 → **BOULDER** → Cloud
-- Step 5: EC = 50/2000 = 0.025s < 1.0 → **PEBBLE** ✓
+- Step 5: EC = 50/2000 = 0.025s < 1.0 → **PEBBLE** [OK]
 
 **Agent1 only makes decisions for Step 2 and Step 5** (pebbles). Steps 3 and 4 always go to cloud.
 
@@ -186,15 +192,17 @@ If EC(step) < θ:                       → PEBBLE  → queue for DQN placement 
 ```
 
 L_fog(step) = T_access + T_exec
-T_access = (8 × data_KB / 100) + 2   [ms]
-T_exec = (MI / (2000 × (1 - ρ_fog))) × 1000   [ms, where ρ = CPU load]
+T_access = (8 × data_KB / 100) + 2 [ms]
+T_exec = (MI / (2000 × (1 - ρ_fog))) × 1000 [ms, where ρ = CPU load]
+
 ```
 **Cloud execution:**
 ```
 
 L_cloud(step) = T_tx_cloud + T_exec_cloud
-T_tx_cloud = (8 × data_KB / 1000) + 30   [ms]
-T_exec_cloud = (MI / 8000) × 1000   [ms]
+T_tx_cloud = (8 × data_KB / 1000) + 30 [ms]
+T_exec_cloud = (MI / 8000) × 1000 [ms]
+
 ```
 ### 3.2 Energy Model
 
@@ -202,31 +210,35 @@ T_exec_cloud = (MI / 8000) × 1000   [ms]
 ```
 
 E_fog = E_tx + E_comp
-E_tx = P_tx × (8 × data_KB / 100_000)   [Joules, P_tx = 0.5W]
-E_comp = κ × MI   [Joules, κ = 0.001 J/MI]
+E_tx = P_tx × (8 × data_KB / 100_000) [Joules, P_tx = 0.5W]
+E_comp = κ × MI [Joules, κ = 0.001 J/MI]
+
 ```
 **Cloud offloading:**
 ```
 
-E_cloud = E_tx + α × E_tx   [Joules, α = 1.8 WAN penalty]
+E_cloud = E_tx + α × E_tx [Joules, α = 1.8 WAN penalty]
+
 ```
 ### 3.3 T_exit (Proactive Handoff)
 ```
 
-v_closing = velocity · n̂   (radial velocity toward fog boundary)
-T_exit = (R_fog - distance_to_fog) / v_closing   [seconds]
+v_closing = velocity · n̂ (radial velocity toward fog boundary)
+T_exit = (R_fog - distance_to_fog) / v_closing [seconds]
 
-If T_exec < T_exit:  → DIRECT mode (task completes before exit)
-If T_exec ≥ T_exit:  → PROACTIVE mode (pre-migrate to next fog)
+If T_exec < T_exit: → DIRECT mode (task completes before exit)
+If T_exec ≥ T_exit: → PROACTIVE mode (pre-migrate to next fog)
+
 ```
 ### 3.4 DQN State Vector (11 dimensions, reduced from 13)
 ```
 
-s = [ρ_A, ρ_B, ρ_C, ρ_D,          # Fog CPU loads (4)
-     q_A, q_B, q_C, q_D,            # Fog queue depths (4)
-     EC_hat,                        # Normalized EC of current step (1)
-     speed_hat,                     # Normalized vehicle speed (1)
-     T_exit_hat]                    # Normalized time to zone exit (1)
+s = [ρ_A, ρ_B, ρ_C, ρ_D, # Fog CPU loads (4)
+q_A, q_B, q_C, q_D, # Fog queue depths (4)
+EC_hat, # Normalized EC of current step (1)
+speed_hat, # Normalized vehicle speed (1)
+T_exit_hat] # Normalized time to zone exit (1)
+
 ```
 **Removed dimensions from old version:**
 - `B_hat` (bandwidth utilization) → STATIC, no information gain
@@ -241,7 +253,8 @@ R = -ω_L × (L / deadline) - ω_E × (E / E_ref) - ω_V × violation_penalty
 ω_E = 0.3 (energy weight)
 ω_V = 0.2 (violation weight)
 violation_penalty = 10.0 if deadline missed, else 0
-```
+
+````
 ---
 
 ## 4. Training Pipeline
@@ -255,10 +268,10 @@ FOR batch = 1 to 1000:
     # Sample random fog state
     ρ_k ~ U(0.2, 0.75) for k in [A, B, C, D]
     q_k ~ U(0, 50)
-    
+
     # Sample 100 pebble tasks
     Generate 100 random tasks with MI ∈ {200, 500, 800, 1000, 1200, 1500, 1800}
-    
+
     # Run NSGA-II with MMDE mutation
     population = 100 chromosomes
     FOR generation = 1 to 200:
@@ -267,18 +280,19 @@ FOR batch = 1 to 1000:
         MMDE mutation: V = r1 + F×(r2 - r3)   [F=0.5]
         Binomial crossover with CR=0.9
         Select best 100 for next generation
-    
+
     # Extract knee point (best trade-off solution)
     Pareto_front = generation_200_front_1
     knee_point = arg min ||normalize(solution - utopia_point)||_2
-    
+
     # Extract training labels
     FOR each pebble step j in knee_point:
         state_j = [ρ_A, ρ_B, ρ_C, ρ_D, q_A, q_B, q_C, q_D, EC_j, ...]
         action_j = fog_assignment[j]   # A, B, C, D, or Cloud
         training_data.append((state_j, action_j))
-```
-```
+````
+
+````
 
 
 **Output:** ~100,000 labeled (state, optimal_action) pairs
@@ -297,11 +311,10 @@ FOR epoch = 1 to 20:
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    
+
     IF loss < 0.05:  # Convergence threshold
         BREAK
-```
-
+````
 
 **Output:** Pre-trained DQN weights (eliminates cold-start problem)
 
@@ -314,36 +327,35 @@ agent.load_weights("bc_pretrained.pth")
 
 FOR each task arrival:
     state = build_state(fog_loads, queues, vehicle_position, ...)
-    
+
     # ε-greedy action selection
     IF random() < ε:
         action = random_choice([A, B, C, D, Cloud])
     ELSE:
         action = arg max_a Q(state, a)
-    
+
     # Execute task
     latency, energy = execute_step(action)
     reward = compute_reward(latency, energy, deadline_met)
     next_state = build_state_after_execution()
-    
+
     # Store transition
     replay_buffer.add((state, action, reward, next_state, done))
-    
+
     # Update DQN (if buffer size >= 64)
     IF len(replay_buffer) >= 64:
         batch = sample_uniform(replay_buffer, 64)
         TD_target = reward + γ × max_a' Q(next_state, a'; θ⁻)
         loss = Huber(Q(state, action; θ) - TD_target)
         optimizer.step()
-    
+
     # Decay exploration
     ε = max(0.05, ε - (0.30 - 0.05) / 10000)
-    
+
     # Sync target network every 1000 steps
     IF steps % 1000 == 0:
         θ⁻ ← θ
 ```
-
 
 ---
 
@@ -357,6 +369,7 @@ FOR each task arrival:
 - **Format:** CSV per taxi (taxi_id, lat, lon, occupancy, timestamp)
 
 **Usage:**
+
 ```python
 # Convert GPS to 1000m × 1000m grid
 lat_min, lat_max = 41.85, 41.95
@@ -371,7 +384,6 @@ speed = distance(pos[t], pos[t-1]) / Δt
 # Compute heading
 heading = atan2(Δy, Δx) × 180/π
 ```
-
 
 ### 5.2 Fallback: Synthetic Traces (Roma-Calibrated)
 
@@ -391,19 +403,18 @@ def generate_trace(scenario, duration=600s):
     When reached: pick new waypoint, resample speed
 ```
 
-
 ---
 
 ## 6. Six Systems (Comparison + Ablation)
 
-| System         | Description                                                                 |
-|----------------|-----------------------------------------------------------------------------|
-| **random**     | Random fog selection for pebbles. Boulders → cloud.                        |
-| **greedy**     | Least-loaded fog. Boulders → cloud.                                        |
-| **nsga2_static** | Offline NSGA-II lookup table. No DQN. No runtime adaptation.              |
-| **dqn_cold**   | DQN cold start (Xavier init, no BC). Online learning. Proactive handoff.   |
-| **dqn_bc_only**| DQN BC pre-trained, **weights frozen** (no online updates). Proactive handoff.|
-| **proposed**   | **Full PCNME:** BC pre-trained DQN + online fine-tuning + proactive handoff.|
+| System           | Description                                                                    |
+| ---------------- | ------------------------------------------------------------------------------ |
+| **random**       | Random fog selection for pebbles. Boulders → cloud.                            |
+| **greedy**       | Least-loaded fog. Boulders → cloud.                                            |
+| **nsga2_static** | Offline NSGA-II lookup table. No DQN. No runtime adaptation.                   |
+| **dqn_cold**     | DQN cold start (Xavier init, no BC). Online learning. Proactive handoff.       |
+| **dqn_bc_only**  | DQN BC pre-trained, **weights frozen** (no online updates). Proactive handoff. |
+| **proposed**     | **Full PCNME:** BC pre-trained DQN + online fine-tuning + proactive handoff.   |
 
 ### 6.1 Ablation Study Logic
 
@@ -414,7 +425,6 @@ nsga2_static → dqn_cold:   Shows value of online adaptation (but cold start hu
 dqn_cold → dqn_bc_only:    Shows value of BC pre-training
 dqn_bc_only → proposed:    Shows value of continued online fine-tuning
 ```
-
 
 ---
 
@@ -433,7 +443,6 @@ N_SCENARIOS = 3 (morning_rush, off_peak, evening_rush)
 Total runs: 6 systems × 5 seeds × 3 scenarios = 90 runs
 ```
 
-
 ### 7.2 Metrics Collected (Per Task)
 
 ```python
@@ -446,12 +455,12 @@ class TaskRecord:
     scenario: str
     vehicle_id: str
     sim_time_s: float
-    
+
     # Outcomes
     total_latency_ms: float
     total_energy_j: float
     deadline_met: bool  # total_latency_ms <= 200
-    
+
     # Per-step breakdown
     step2_latency_ms: float    # Pebble
     step3_latency_ms: float    # Boulder (cloud)
@@ -461,7 +470,7 @@ class TaskRecord:
     step3_dest: str = "cloud"  # Always cloud
     step4_dest: str = "cloud"  # Always cloud
     step5_dest: str            # A/B/C/D/cloud
-    
+
     # Fog state
     fog_A_load: float
     fog_B_load: float
@@ -471,20 +480,19 @@ class TaskRecord:
     fog_B_queue: int
     fog_C_queue: int
     fog_D_queue: int
-    
+
     # Mobility
     handoff_occurred: bool
     handoff_mode: str  # direct/proactive/none
     handoff_success: bool
     t_exit_at_decision: float
-    
+
     # Agent internals (proposed only)
     agent_q_max: float = None
     agent_epsilon: float = None
     agent_reward: float = None
     bc_loss_final: float = None
 ```
-
 
 ### 7.3 Statistical Analysis
 
@@ -499,29 +507,28 @@ stat, p = wilcoxon(proposed_latencies, baseline_latencies, alternative='less')
 significant = (p < 0.05)
 ```
 
-
 ---
 
 ## 8. Expected Results
 
 ### 8.1 Primary Metrics (Target Ranges)
 
-| System          | Avg Latency (ms) | Feasibility (%) | Avg Energy (J) | Handoff Success (%) |
-|-----------------|------------------|-----------------|----------------|---------------------|
-| Random          | 300-500          | 25-45           | 0.08-0.14      | 45-65               |
-| Greedy          | 180-280          | 50-68           | 0.06-0.09      | 58-72               |
-| NSGA-II static  | 130-180          | 68-80           | 0.05-0.07      | 68-80               |
-| DQN cold        | 150-220          | 55-72           | 0.06-0.08      | 72-85               |
-| DQN BC-only     | 115-165          | 75-87           | 0.045-0.065    | 80-90               |
-| **Proposed**    | **95-150**       | **85-93**       | **0.040-0.060**| **88-95**           |
+| System         | Avg Latency (ms) | Feasibility (%) | Avg Energy (J)  | Handoff Success (%) |
+| -------------- | ---------------- | --------------- | --------------- | ------------------- |
+| Random         | 300-500          | 25-45           | 0.08-0.14       | 45-65               |
+| Greedy         | 180-280          | 50-68           | 0.06-0.09       | 58-72               |
+| NSGA-II static | 130-180          | 68-80           | 0.05-0.07       | 68-80               |
+| DQN cold       | 150-220          | 55-72           | 0.06-0.08       | 72-85               |
+| DQN BC-only    | 115-165          | 75-87           | 0.045-0.065     | 80-90               |
+| **Proposed**   | **95-150**       | **85-93**       | **0.040-0.060** | **88-95**           |
 
 ### 8.2 Key Claims to Validate
 
-1. ✓ **Proposed beats all baselines on feasibility** (p < 0.05)
-2. ✓ **Proposed beats all baselines on latency** (p < 0.05)
-3. ✓ **BC pre-training eliminates cold-start degradation** (dqn_cold vs dqn_bc_only)
-4. ✓ **Online fine-tuning adds 5-10% improvement over frozen BC** (dqn_bc_only vs proposed)
-5. ✓ **Proactive handoff reduces task re-submission by 40%** (vs reactive HTB)
+1. [OK] **Proposed beats all baselines on feasibility** (p < 0.05)
+2. [OK] **Proposed beats all baselines on latency** (p < 0.05)
+3. [OK] **BC pre-training eliminates cold-start degradation** (dqn_cold vs dqn_bc_only)
+4. [OK] **Online fine-tuning adds 5-10% improvement over frozen BC** (dqn_bc_only vs proposed)
+5. [OK] **Proactive handoff reduces task re-submission by 40%** (vs reactive HTB)
 
 ---
 
@@ -556,97 +563,97 @@ pcnme/
 └── requirements.txt            # Dependencies
 ```
 
-
 ### 9.2 Key Files
 
 **pcnme/constants.py:**
+
 - All 50+ parameters from methodology Table 1
 - DAG definition (5 steps)
 - Fog node positions (Istanbul zones)
 - Reward weights, DQN hyperparameters
 
 **pcnme/formulas.py:**
+
 ```python
 def compute_ec(step_MI: int, fog_mips: int = 2000) -> float:
     """EC = MI / fog_mips [seconds]"""
-    
+
 def classify_step(ec: float, theta: float = 1.0) -> str:
     """Returns 'boulder' if EC >= theta else 'pebble'"""
-    
+
 def step_latency(step_MI, data_KB, destination, fog_load):
     """L_j(x_j, t) = T_access + T_exec [ms]"""
-    
+
 def step_energy(step_MI, data_KB, destination):
     """E_j(x_j) = E_tx + E_comp [Joules]"""
-    
+
 def compute_t_exit(vehicle_pos, vehicle_velocity, fog_pos, fog_radius):
     """T_exit = (R - distance) / v_closing [seconds]"""
-    
+
 def build_state(fog_loads, fog_queues, step_EC, vehicle_speed, t_exit):
     """Returns 11-dimensional normalized state vector"""
-    
+
 def compute_reward(latency_ms, energy_j, deadline_ms):
     """R = -ω_L L_tilde - ω_E E_tilde - ω_V violation"""
 ```
 
-
 **pcnme/dqn_agent.py:**
+
 ```python
 class DQNNetwork(nn.Module):
     def __init__(self):
         self.fc1 = nn.Linear(11, 256)
         self.fc2 = nn.Linear(256, 128)
         self.fc3 = nn.Linear(128, 5)
-    
+
 class DQNAgent:
     def pretrain_from_nsga2(self, training_pairs, epochs=20):
         """Behavioral cloning from NSGA-II labels"""
-        
+
     def select_action(self, state, epsilon):
         """ε-greedy action selection"""
-        
+
     def update_online(self, replay_buffer):
         """TD learning with Huber loss"""
 ```
 
-
 **pcnme/optimization.py:**
+
 ```python
 class NSGA2MMDE:
     def run_optimization(self, pebble_steps, fog_state):
         """Run NSGA-II with MMDE mutation for 200 generations"""
         return pareto_front, knee_point
-    
+
     def extract_training_pairs(self, knee_point, fog_state):
         """Convert knee point to (state, action) pairs"""
 ```
 
-
 **pcnme/systems.py:**
+
 ```python
 class ProposedSystem:
     def __init__(self, dqn_agent):
         self.agent = dqn_agent  # BC pre-trained
-        
+
     def select_destination(self, step, vehicle, fog_state):
         # 1. EC classification
         if classify_step(step.MI) == 'boulder':
             return 'cloud'
-        
+
         # 2. Build state
         state = build_state(fog_state, vehicle.position, ...)
-        
+
         # 3. DQN action
         action = self.agent.select_action(state, epsilon)
-        
+
         # 4. Proactive handoff check
         t_exit = compute_t_exit(vehicle, fog_node)
         if t_exit < t_exec:
             action = migrate_to_next_fog()
-        
+
         return action
 ```
-
 
 ---
 
@@ -662,8 +669,8 @@ python pretrain.py \
     --output weights/dqn_bc_pretrained.pth
 ```
 
-
 **Output:**
+
 - `weights/dqn_bc_pretrained.pth` (Agent1 pre-trained DQN)
 - `weights/bc_training_curve.png` (convergence plot)
 
@@ -677,8 +684,8 @@ python run_all.py \
     --dataset roma_taxi  # or synthetic
 ```
 
-
 **Output:**
+
 - `results/raw_results.csv` (all 90 runs, ~500k task records)
 
 ### Step 3: Statistical Analysis (~30 seconds)
@@ -689,8 +696,8 @@ python analyze.py \
     --output results/
 ```
 
-
 **Output:**
+
 - `results/summary_overall.csv` (mean ± CI per system)
 - `results/summary_by_scenario.csv` (system × scenario)
 - `results/significance_tests.csv` (Wilcoxon p-values)
@@ -704,8 +711,8 @@ python make_charts.py \
     --dpi 300
 ```
 
-
 **Output (4 key figures):**
+
 - `fig1_latency_cdf.pdf` - Latency CDF across systems
 - `fig2_feasibility_bars.pdf` - Feasibility by scenario
 - `fig3_energy_latency.pdf` - Energy-latency trade-off
@@ -717,13 +724,13 @@ python make_charts.py \
 python verify.py --input results/raw_results.csv
 ```
 
-
 **Checks:**
-1. ✓ EC classification matches formula
-2. ✓ Proposed beats all baselines
-3. ✓ T_exit manual verification
-4. ✓ Deadline consistency
-5. ✓ Fog state validity
+
+1. [OK] EC classification matches formula
+2. [OK] Proposed beats all baselines
+3. [OK] T_exit manual verification
+4. [OK] Deadline consistency
+5. [OK] Fog state validity
 
 ---
 
@@ -759,22 +766,21 @@ CREATE INDEX idx_scenario ON tasks(scenario);
 CREATE INDEX idx_deadline ON tasks(deadline_met);
 ```
 
-
 ---
 
 ## 12. Critical Differences from Old Version
 
-| Aspect                | Old (PCNME_Prompt.md)        | New (Thesis Version)              |
-|-----------------------|------------------------------|-----------------------------------|
-| **Agents**            | Agent1 (offload) + Agent2 (SDN) | **Agent1 ONLY** (Agent2 removed) |
-| **Network**           | Dynamic bandwidth, routing   | **STATIC** (no routing decisions)|
-| **State vector**      | 13 dimensions (with B_hat)   | **11 dimensions** (B_hat removed)|
-| **Pre-training**      | Optional                     | **MANDATORY** (BC from NSGA-II)  |
-| **Datasets**          | Synthetic only               | **Roma CRAWDAD real dataset**    |
-| **Database**          | CSV only                     | **SQLite + CSV**                 |
-| **Systems**           | 4 systems                    | **6 systems** (full ablation)    |
-| **Handoff**           | Task-level                   | **Step-level** (per DAG step)    |
-| **Validation**        | Basic                        | **Professional** (5 sanity checks)|
+| Aspect           | Old (PCNME_Prompt.md)           | New (Thesis Version)               |
+| ---------------- | ------------------------------- | ---------------------------------- |
+| **Agents**       | Agent1 (offload) + Agent2 (SDN) | **Agent1 ONLY** (Agent2 removed)   |
+| **Network**      | Dynamic bandwidth, routing      | **STATIC** (no routing decisions)  |
+| **State vector** | 13 dimensions (with B_hat)      | **11 dimensions** (B_hat removed)  |
+| **Pre-training** | Optional                        | **MANDATORY** (BC from NSGA-II)    |
+| **Datasets**     | Synthetic only                  | **Roma CRAWDAD real dataset**      |
+| **Database**     | CSV only                        | **SQLite + CSV**                   |
+| **Systems**      | 4 systems                       | **6 systems** (full ablation)      |
+| **Handoff**      | Task-level                      | **Step-level** (per DAG step)      |
+| **Validation**   | Basic                           | **Professional** (5 sanity checks) |
 
 ---
 
@@ -797,7 +803,6 @@ Proposed vs NSGA2-Static: p = 0.003 (latency), effect size = 0.7
 
 All improvements statistically significant with 95% confidence.
 ```
-
 
 ---
 
@@ -827,10 +832,10 @@ def run_simulation(config: dict):
     ...
 ```
 
-
 ### 14.2 Frontend Options
 
 **Option A: Python GUI (Streamlit)**
+
 ```python
 # dashboard.py
 import streamlit as st
@@ -845,8 +850,8 @@ fig = px.histogram(df[df['system']==system], x='total_latency_ms')
 st.plotly_chart(fig)
 ```
 
-
 **Option B: Python GUI (PyQt5)**
+
 ```python
 # main_window.py
 from PyQt5.QtWidgets import QApplication, QMainWindow
@@ -859,25 +864,24 @@ class DashboardWindow(QMainWindow):
         self.plot_latency_cdf()
 ```
 
-
 **Option C: Web Dashboard (React + FastAPI)**
+
 ```textmate
 // frontend/src/components/LatencyChart.jsx
 import { LineChart } from 'recharts';
 
 function LatencyChart({ system }) {
   const [data, setData] = useState([]);
-  
+
   useEffect(() => {
     fetch(`/api/metrics/latency?system=${system}`)
       .then(res => res.json())
       .then(setData);
   }, [system]);
-  
+
   return <LineChart data={data} ... />;
 }
 ```
-
 
 ---
 
@@ -908,7 +912,6 @@ GAMMA = 0.95              # DQN discount
 EPSILON_START = 0.30      # Initial exploration
 ```
 
-
 ### Formulas (Most Used)
 
 ```python
@@ -925,10 +928,10 @@ E = 0.5*(8*KB/100_000) + 0.001*MI
 R = -0.5*(L/deadline) - 0.3*(E/0.1) - 0.2*violation*10
 ```
 
-
 ---
 
 **END OF DOCUMENT**
+
 ```
 I'll now create the actual file and start the refactoring process. Due to the response limit, I'll provide the key implementation changes as separate code blocks.
 ```

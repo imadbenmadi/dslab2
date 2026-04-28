@@ -73,7 +73,7 @@ Cascading failures
   ↓
 TOF classifies into 2 streams
   ↓
-Heavy (30%): Immediately to cloud ✓
+Heavy (30%): Immediately to cloud [OK]
 Light (70%): Optimize for fog
   ↓
 81% deadline success (Baseline 3)

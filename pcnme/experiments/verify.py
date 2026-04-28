@@ -48,7 +48,7 @@ def verify_results(records, logger=None):
             assert r.n_boulders >= 1, "Step 4 and/or 3 must always be boulders"
             assert r.n_pebbles >= 1, "Steps 2 and 5 must always be pebbles"
 
-        msg = "✓ PASS: All tasks correctly classified boulders vs pebbles"
+        msg = "[OK]  PASS: All tasks correctly classified boulders vs pebbles"
         print(f"  {msg}")
         logger.info(f"  {msg}")
         n_passed += 1
@@ -73,7 +73,7 @@ def verify_results(records, logger=None):
                     assert proposed_feas >= sys_feas * 0.95, \
                         f"Proposed ({proposed_feas:.3f}) should beat {sys} ({sys_feas:.3f})"
 
-            msg = f"✓ PASS: Proposed achieves {proposed_feas*100:.1f}% feasibility (better than baselines)"
+            msg = f"[OK]  PASS: Proposed achieves {proposed_feas*100:.1f}% feasibility (better than baselines)"
             print(f"  {msg}")
             logger.info(f"  {msg}")
             n_passed += 1
@@ -102,7 +102,7 @@ def verify_results(records, logger=None):
                     assert proposed_lat <= sys_lat * 1.05, \
                         f"Proposed ({proposed_lat:.1f}ms) should beat {sys} ({sys_lat:.1f}ms)"
 
-            msg = f"✓ PASS: Proposed achieves {proposed_lat:.1f}ms latency (better than baselines)"
+            msg = f"[OK]  PASS: Proposed achieves {proposed_lat:.1f}ms latency (better than baselines)"
             print(f"  {msg}")
             logger.info(f"  {msg}")
             n_passed += 1
@@ -134,7 +134,7 @@ def verify_results(records, logger=None):
         error = abs(t - 3.6)
         assert error < 0.5, f"T_exit = {t:.2f}s, expected ~3.6s (error: {error:.2f}s)"
 
-        msg = f"✓ PASS: T_exit = {t:.2f}s (expected ~3.6s, error={error:.3f}s)"
+        msg = f"[OK]  PASS: T_exit = {t:.2f}s (expected ~3.6s, error={error:.3f}s)"
         print(f"  {msg}")
         logger.info(f"  {msg}")
         n_passed += 1
@@ -158,7 +158,7 @@ def verify_results(records, logger=None):
 
         assert inconsistent == 0, f"{inconsistent} records with inconsistent deadline flags"
 
-        msg = f"✓ PASS: All {len(records)} records have consistent deadline flags"
+        msg = f"[OK]  PASS: All {len(records)} records have consistent deadline flags"
         print(f"  {msg}")
         logger.info(f"  {msg}")
         n_passed += 1
@@ -190,7 +190,7 @@ def verify_results(records, logger=None):
         assert invalid_loads == 0, f"{invalid_loads} records with invalid fog loads"
         assert invalid_queues == 0, f"{invalid_queues} records with invalid fog queues"
 
-        msg = "✓ PASS: All fog state values within valid ranges"
+        msg = "[OK]  PASS: All fog state values within valid ranges"
         print(f"  {msg}")
         logger.info(f"  {msg}")
         n_passed += 1
@@ -217,7 +217,7 @@ def verify_results(records, logger=None):
 
         assert invalid_dests == 0, f"{invalid_dests} records with invalid destinations"
 
-        msg = "✓ PASS: All destination values are valid"
+        msg = "[OK]  PASS: All destination values are valid"
         print(f"  {msg}")
         logger.info(f"  {msg}")
         n_passed += 1
@@ -248,7 +248,7 @@ def verify_results(records, logger=None):
         min_count = min(system_counts.values())
         assert min_count > 0, "All systems should have records"
 
-        msg = f"✓ PASS: All systems have coverage ({min_count}-{max(system_counts.values())} records)"
+        msg = f"[OK]  PASS: All systems have coverage ({min_count}-{max(system_counts.values())} records)"
         print(f"  {msg}")
         logger.info(f"  {msg}")
         n_passed += 1
@@ -265,7 +265,7 @@ def verify_results(records, logger=None):
     logger.info(f"VERIFICATION SUMMARY: {n_passed}/{n_checks} checks passed")
 
     if n_passed == n_checks:
-        msg = "✓ ALL CHECKS PASSED - Results are valid!"
+        msg = "[OK]  ALL CHECKS PASSED - Results are valid!"
         print(msg)
         logger.info(msg)
     else:
@@ -284,7 +284,7 @@ def main():
         description="PCNME Results Verification"
     )
     parser.add_argument('--input', type=Path,
-                       default='experiments/results/raw_results.csv',
+                       default=Path(__file__).parent / 'results' / 'raw_results.csv',
                        help='Input CSV with results')
     parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING'], default='INFO',
                        help='Logging level')
@@ -298,8 +298,8 @@ def main():
     print(f"\nLoading results from {args.input}...")
     logger.info(f"Loading results from {args.input}...")
     records = MetricsCollector.load_csv(args.input)
-    logger.info(f"✓ Loaded {len(records)} task records")
-    print(f"✓ Loaded {len(records)} task records\n")
+    logger.info(f"[OK]  Loaded {len(records)} task records")
+    print(f"[OK]  Loaded {len(records)} task records\n")
 
     # Run verification
     all_passed = verify_results(records, logger=logger)

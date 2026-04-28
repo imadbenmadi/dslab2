@@ -30,7 +30,7 @@ installed = 0
 for pkg, desc in packages.items():
     try:
         __import__(pkg)
-        print(f"  ✓ {pkg:<15} {desc}")
+        print(f"  [OK]  {pkg:<15} {desc}")
         installed += 1
     except ImportError:
         print(f"  ✗ {pkg:<15} {desc}")
@@ -52,7 +52,7 @@ found = 0
 for d in dirs:
     path = os.path.join(os.getcwd(), d)
     if os.path.isdir(path):
-        print(f"  ✓ {d}/")
+        print(f"  [OK]  {d}/")
         found += 1
     else:
         print(f"  ✗ {d}/")
@@ -78,7 +78,7 @@ for fname, desc in files.items():
     path = os.path.join(os.getcwd(), fname)
     if os.path.isfile(path):
         size = os.path.getsize(path)
-        print(f"  ✓ {fname:<30} ({size:,} bytes) - {desc}")
+        print(f"  [OK]  {fname:<30} ({size:,} bytes) - {desc}")
         found += 1
     else:
         print(f"  ✗ {fname:<30} - {desc}")
@@ -101,7 +101,7 @@ for fname, desc in baselines.items():
     path = os.path.join(os.getcwd(), fname)
     if os.path.isfile(path):
         lines = len(open(path).readlines())
-        print(f"  ✓ {fname:<30} ({lines:>4} lines) - {desc}")
+        print(f"  [OK]  {fname:<30} ({lines:>4} lines) - {desc}")
         found += 1
     else:
         print(f"  ✗ {fname:<30} - {desc}")
@@ -127,7 +127,7 @@ for fname, desc in docs.items():
     path = os.path.join(os.getcwd(), fname)
     if os.path.isfile(path):
         lines = len(open(path).readlines())
-        print(f"  ✓ {fname:<40} ({lines:>3} lines)")
+        print(f"  [OK]  {fname:<40} ({lines:>3} lines)")
         found += 1
     else:
         print(f"  ✗ {fname:<40}")

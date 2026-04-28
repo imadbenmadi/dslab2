@@ -119,9 +119,9 @@ served directly by the API layer for dashboard/thesis reporting.
 All baselines are fully functional and tested:
 
 ```
-✓ baseline1: 47.0% success
-✓ baseline2: 68.4% success
-✓ baseline3: 80.4% success
+[OK]  baseline1: 47.0% success
+[OK]  baseline2: 68.4% success
+[OK]  baseline3: 80.4% success
 ```
 
 ## Key Insight

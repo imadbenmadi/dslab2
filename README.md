@@ -199,14 +199,14 @@ Each executed task produces a `TaskRecord` with:
 
 All sanity checks run automatically:
 
-1. ✓ EC classification matches formula
-2. ✓ Proposed beats baselines on feasibility
-3. ✓ Proposed beats baselines on latency
-4. ✓ T_exit manual verification
-5. ✓ Deadline consistency
-6. ✓ Fog state validity
-7. ✓ Destination validity
-8. ✓ Data coverage across systems
+1. [OK] EC classification matches formula
+2. [OK] Proposed beats baselines on feasibility
+3. [OK] Proposed beats baselines on latency
+4. [OK] T_exit manual verification
+5. [OK] Deadline consistency
+6. [OK] Fog state validity
+7. [OK] Destination validity
+8. [OK] Data coverage across systems
 
 ## Expected Results
 

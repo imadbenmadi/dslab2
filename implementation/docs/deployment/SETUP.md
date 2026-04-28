@@ -89,11 +89,11 @@ python complete_system_setup.py
 Expected output:
 
 ```
-✓ Python packages installed
-✓ PostgreSQL connected
-✓ Redis available (optional)
-✓ CARLA trajectory data loaded
-✓ Baselines implemented
+[OK]  Python packages installed
+[OK]  PostgreSQL connected
+[OK]  Redis available (optional)
+[OK]  CARLA trajectory data loaded
+[OK]  Baselines implemented
 ```
 
 ## Step 5: Start System (2 min)
@@ -256,11 +256,11 @@ After setup, you should see:
 
 | Metric                   | Target | Status |
 | ------------------------ | ------ | ------ |
-| Dashboard Load Time      | <2s    | ✓      |
-| WebSocket Connection     | <1s    | ✓      |
-| Metrics Update Frequency | 1/sec  | ✓      |
-| Map Render               | 60 FPS | ✓      |
-| Database Insert Latency  | <100ms | ✓      |
+| Dashboard Load Time      | <2s    | [OK]   |
+| WebSocket Connection     | <1s    | [OK]   |
+| Metrics Update Frequency | 1/sec  | [OK]   |
+| Map Render               | 60 FPS | [OK]   |
+| Database Insert Latency  | <100ms | [OK]   |
 
 ---
 

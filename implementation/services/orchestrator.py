@@ -112,7 +112,7 @@ class ServiceOrchestrator:
         print("=" * 80)
         print("\nServices running:")
         for name in self.processes:
-            print(f"  ✓ {name}")
+            print(f"  [OK]  {name}")
 
         print("\nEndpoints:")
         print(f"  - Flask API:  http://127.0.0.1:5000")

@@ -27,9 +27,9 @@ cd ..
 python setup_postgresql.py
 
 # You'll see:
-# ✓ Connection to PostgreSQL successful
-# ✓ Database 'smart_city' created
-# ✓ Tables initialized
+# [OK]  Connection to PostgreSQL successful
+# [OK]  Database 'smart_city' created
+# [OK]  Tables initialized
 ```
 
 **If it fails:** PostgreSQL service not running

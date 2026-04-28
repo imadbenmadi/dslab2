@@ -68,7 +68,7 @@ class CarlaTrajectoryLoader:
                     self.vehicle_ids.add(vehicle_id)
                     row_count += 1
             
-            print(f"[CarlaTrajectoryLoader] ✓ Loaded {len(self.vehicle_ids)} vehicles, "
+            print(f"[CarlaTrajectoryLoader] [OK]  Loaded {len(self.vehicle_ids)} vehicles, "
                   f"{row_count} trajectory points")
             print(f"[CarlaTrajectoryLoader] Time range: {self.timestamp_range[0]:.1f}s - {self.timestamp_range[1]:.1f}s")
             

@@ -88,9 +88,9 @@ class NSGA2StaticSystem(BaseSystem):
 class DQNColdStartSystem(BaseSystem):
     """DQN from random initialization (no BC pre-training)."""
 
-    def __init__(self, env: SimulationEnvironment, seed: int = 42):
+    def __init__(self, env: SimulationEnvironment, agent: DQNAgent = None, seed: int = 42):
         super().__init__(env, seed)
-        self.agent = DQNAgent()
+        self.agent = agent if agent else DQNAgent()
         # Initialize with Xavier uniform instead of defaults
         for p in self.agent.online_net.parameters():
             if p.dim() > 1:
@@ -117,11 +117,9 @@ class DQNColdStartSystem(BaseSystem):
 class DQNBCOnlySystem(BaseSystem):
     """DQN pre-trained with BC but frozen weights (no online updates)."""
 
-    def __init__(self, env: SimulationEnvironment, weights_path=None, seed: int = 42):
+    def __init__(self, env: SimulationEnvironment, agent: DQNAgent = None, seed: int = 42):
         super().__init__(env, seed)
-        self.agent = DQNAgent()
-        if weights_path:
-            self.agent.load_weights(weights_path)
+        self.agent = agent if agent else DQNAgent()
         # Freeze weights
         for param in self.agent.online_net.parameters():
             param.requires_grad = False
@@ -146,11 +144,9 @@ class DQNBCOnlySystem(BaseSystem):
 class ProposedSystem(BaseSystem):
     """Full PCNME with DQN, behavioral cloning, and online learning."""
 
-    def __init__(self, env: SimulationEnvironment, weights_path=None, seed: int = 42):
+    def __init__(self, env: SimulationEnvironment, agent: DQNAgent = None, seed: int = 42):
         super().__init__(env, seed)
-        self.agent = DQNAgent()
-        if weights_path:
-            self.agent.load_weights(weights_path)
+        self.agent = agent if agent else DQNAgent()
 
     def _select_pebble_destination(self, vehicle_id: str, step_id: int,
                                    step_MI: int, sim_time_s: float) -> str:
@@ -170,7 +166,7 @@ class ProposedSystem(BaseSystem):
 
 
 def create_system(system_type: str, env: SimulationEnvironment, 
-                 weights_path=None, routing_table=None,
+                 agent=None, routing_table=None,
                  seed: int = 42) -> BaseSystem:
     """Factory function for system creation."""
     if system_type == "random":
@@ -180,11 +176,11 @@ def create_system(system_type: str, env: SimulationEnvironment,
     elif system_type == "nsga2_static":
         return NSGA2StaticSystem(env, routing_table, seed)
     elif system_type == "dqn_cold":
-        return DQNColdStartSystem(env, seed)
+        return DQNColdStartSystem(env, agent, seed)
     elif system_type == "dqn_bc_only":
-        return DQNBCOnlySystem(env, weights_path, seed)
+        return DQNBCOnlySystem(env, agent, seed)
     elif system_type == "proposed":
-        return ProposedSystem(env, weights_path, seed)
+        return ProposedSystem(env, agent, seed)
     else:
         raise ValueError(f"Unknown system type: {system_type}")
 

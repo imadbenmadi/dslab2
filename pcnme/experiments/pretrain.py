@@ -30,12 +30,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from utilities.data_gen import generate_bc_dataset
 
 
-def pretrain_dqn(dataset, output_dir: Path, epochs: int = 20, logger=None):
+def pretrain_dqn(db_path: Path, output_dir: Path, epochs: int = 20, logger=None):
     """
     Pre-train DQN using behavioral cloning.
     
     Args:
-        dataset: list of (state, action) tuples
+        db_path: Path to the SQLite database
         output_dir: directory to save weights
         epochs: BC training epochs
         logger: optional logger instance
@@ -50,7 +50,7 @@ def pretrain_dqn(dataset, output_dir: Path, epochs: int = 20, logger=None):
                     hidden_sizes=HIDDEN)
 
     logger.info(f"Pre-training with behavioral cloning ({epochs} epochs)...")
-    agent.pretrain_with_bc(dataset, epochs=epochs, batch_size=64)
+    agent.pretrain_with_bc(db_path, epochs=epochs, batch_size=64)
 
     # Check convergence
     final_loss = agent.bc_loss_history[-1]
@@ -119,12 +119,12 @@ def main():
 
     # Generate dataset
     logger.info("Starting dataset generation...")
-    dataset = generate_bc_dataset(n_batches=args.batches, seed=args.seed, logger=logger)
-    logger.info(f"Dataset ready: {len(dataset)} samples")
+    db_path = generate_bc_dataset(n_batches=args.batches, seed=args.seed, logger=logger)
+    logger.info(f"Dataset ready at: {db_path}")
 
     # Pre-train DQN
     logger.info("Starting DQN pre-training...")
-    agent = pretrain_dqn(dataset, args.output, epochs=args.epochs, logger=logger)
+    agent = pretrain_dqn(db_path, args.output, epochs=args.epochs, logger=logger)
 
     logger.info("=" * 70)
     logger.info("Pre-training complete!")

@@ -221,7 +221,7 @@ class PCNMESimulator:
         finally:
             pbar.close()
 
-        self.logger.info(f"  ✓ Completed: {len(task_records)} task records")
+        self.logger.info(f"  [OK] Completed: {len(task_records)} task records")
         return task_records
 
 
@@ -230,9 +230,9 @@ def main():
         description="PCNME Full Simulation Suite"
     )
     parser.add_argument('--output', type=Path,
-                       default='experiments/results/raw_results.csv',
+                       default=Path(__file__).parent / 'results' / 'raw_results.csv',
                        help='Output CSV file for results')
-    parser.add_argument('--weights', type=Path, default='experiments/weights/',
+    parser.add_argument('--weights', type=Path, default=Path(__file__).parent / 'weights',
                        help='Directory containing pre-trained weights')
     parser.add_argument('--systems', nargs='+',
                        default=['random', 'greedy', 'nsga2_static',

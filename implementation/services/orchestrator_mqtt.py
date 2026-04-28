@@ -222,7 +222,7 @@ log_dest stdout
         for name in self.processes:
             proc = self.processes[name]
             if proc.poll() is None:
-                print(f"  ✓ {name} (PID: {proc.pid})")
+                print(f"  [OK]  {name} (PID: {proc.pid})")
             else:
                 print(f"  ✗ {name} (FAILED)")
 
@@ -236,7 +236,7 @@ log_dest stdout
         print("\nProvisioned services:")
         if self.mqtt_provisioner:
             for svc in self.mqtt_provisioner.list_provisioned_services():
-                print(f"  ✓ {svc}")
+                print(f"  [OK]  {svc}")
 
         print("\nPress Ctrl+C to stop all services...\n")
 

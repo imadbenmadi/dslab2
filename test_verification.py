@@ -17,10 +17,10 @@ ec_step3 = formulas.compute_ec(2000)
 ec_step4 = formulas.compute_ec(8000)
 ec_step5 = formulas.compute_ec(50)
 
-print(f"  Step 2: EC = 200/2000 = {ec_step2:.3f} → {formulas.classify_step(200)} ✓")
-print(f"  Step 3: EC = 2000/2000 = {ec_step3:.3f} → {formulas.classify_step(2000)} ✓")
-print(f"  Step 4: EC = 8000/2000 = {ec_step4:.3f} → {formulas.classify_step(8000)} ✓")
-print(f"  Step 5: EC = 50/2000 = {ec_step5:.3f} → {formulas.classify_step(50)} ✓")
+print(f"  Step 2: EC = 200/2000 = {ec_step2:.3f} → {formulas.classify_step(200)} [OK] ")
+print(f"  Step 3: EC = 2000/2000 = {ec_step3:.3f} → {formulas.classify_step(2000)} [OK] ")
+print(f"  Step 4: EC = 8000/2000 = {ec_step4:.3f} → {formulas.classify_step(8000)} [OK] ")
+print(f"  Step 5: EC = 50/2000 = {ec_step5:.3f} → {formulas.classify_step(50)} [OK] ")
 
 assert ec_step2 == 0.1 and formulas.classify_step(200) == "pebble"
 assert ec_step3 == 1.0 and formulas.classify_step(2000) == "boulder"
@@ -35,7 +35,7 @@ t_exec_fog_05 = formulas.t_exec_fog(200, fog_load=0.5)
 print(f"  Step MI=200, load=0.0: {t_exec_fog_0:.2f} ms")
 print(f"  Step MI=200, load=0.5: {t_exec_fog_05:.2f} ms")
 assert t_exec_fog_05 > t_exec_fog_0
-print("  ✓ Higher load → higher latency")
+print("  [OK]  Higher load → higher latency")
 
 # Test 3: Transmission Time
 print("\n[3] Transmission Time - T_tx = (8*d / B) + delta [ms]")
@@ -46,7 +46,7 @@ print(f"  Fog (100 Mbps + 2ms): {t_tx_fog_val:.2f} ms")
 print(f"  Cloud (1000 Mbps + 30ms): {t_tx_cloud_val:.2f} ms")
 assert t_tx_fog_val == (8*200/100 + 2)
 assert t_tx_cloud_val == (8*200/1000 + 30)
-print("  ✓ Formulas match paper exactly")
+print("  [OK]  Formulas match paper exactly")
 
 # Test 4: Step Latency
 print("\n[4] Total Step Latency - L_j = T_tx + T_exec")
@@ -56,7 +56,7 @@ lat_cloud = formulas.step_latency(8000, 30, "cloud")
 print(f"  Pebble on fog: {lat_fog:.2f} ms")
 print(f"  Boulder on cloud: {lat_cloud:.2f} ms")
 assert lat_fog > 0 and lat_cloud > 0
-print("  ✓ Both calculations valid")
+print("  [OK]  Both calculations valid")
 
 # Test 5: Energy
 print("\n[5] Energy Model")
@@ -69,7 +69,7 @@ print(f"  Boulder on cloud: {e_cloud_boulder:.6f} J")
 e_tx_val = formulas.e_tx(200)
 print(f"  Transmission energy (200KB): {e_tx_val:.6f} J")
 print(f"  Cloud penalty: 1 + alpha = {1 + constants.ALPHA:.1f}x transmission")
-print("  ✓ Energy calculations correct")
+print("  [OK]  Energy calculations correct")
 
 # Test 6: T_exit
 print("\n[6] T_exit Formula - (R - dist) / v_close [seconds]")
@@ -83,7 +83,7 @@ print(f"  Vehicle at (260, 500), moving EAST at 19.4 m/s")
 print(f"  Fog A at (200, 500), radius=250m")
 print(f"  T_exit = {t_exit:.2f} seconds (vehicle exiting)")
 assert t_exit > 0 and t_exit < 30  # Vehicle moving away should have reasonable T_exit
-print("  ✓ Valid T_exit computation for moving vehicle")
+print("  [OK]  Valid T_exit computation for moving vehicle")
 
 # Test 7: State Vector
 print("\n[7] DQN State Vector - 11 normalized dims (per methodology)")
@@ -97,7 +97,7 @@ state = formulas.build_state(
 print(f"  State dimensions: {len(state)}")
 print(f"  Sample: {[f'{v:.2f}' for v in state[:5]]} ...")
 assert len(state) == 11 and all(0 <= v <= 1 for v in state)
-print("  ✓ All 11 dimensions normalized to [0,1]")
+print("  [OK]  All 11 dimensions normalized to [0,1]")
 
 # Test 8: Reward
 print("\n[8] Reward Function")
@@ -107,7 +107,7 @@ r_bad = formulas.compute_reward(250, 0.20, 200)
 print(f"  Good (100ms, 0.05J): {r_good:.4f}")
 print(f"  Bad (250ms, 0.20J): {r_bad:.4f}")
 assert r_good > r_bad
-print("  ✓ Better outcomes have higher rewards")
+print("  [OK]  Better outcomes have higher rewards")
 
 # Test 9: Bootstrap CI
 print("\n[9] Bootstrap CI (10,000 resamples)")
@@ -116,7 +116,7 @@ data = [100, 102, 98, 105, 99, 101, 103, 97, 104, 100]
 mean, low, high = formulas.bootstrap_ci(data)
 print(f"  Mean: {mean:.2f}, 95% CI: [{low:.2f}, {high:.2f}]")
 assert low <= mean <= high
-print("  ✓ Bootstrap CI computed correctly")
+print("  [OK]  Bootstrap CI computed correctly")
 
 # Test 10: Data structures
 print("\n[10] Data Structures - TaskRecord")
@@ -146,7 +146,7 @@ print(f"  TaskRecord created: {record.task_id}")
 print(f"  Latency: {record.total_latency_ms} ms")
 print(f"  Energy: {record.total_energy_j} J")
 print(f"  Deadline met: {record.deadline_met}")
-print("  ✓ TaskRecord structure valid (35 fields)")
+print("  [OK]  TaskRecord structure valid (35 fields)")
 
 # Test 11: Simulation Engine
 print("\n[11] Simulation Engine - FogNode")
@@ -155,7 +155,7 @@ fog = simulation.FogNode("A", (200, 500), 0.3)
 print(f"  FogNode created: {fog.name}")
 print(f"  Initial load: {fog.get_load():.2f}")
 print(f"  Queue length: {fog.get_queue_length()}")
-print("  ✓ FogNode initialized")
+print("  [OK]  FogNode initialized")
 
 # Test 12: Systems
 print("\n[12] Six Systems - Factory Pattern")
@@ -165,7 +165,7 @@ sys_names = ["random", "greedy", "nsga2_static", "dqn_cold", "dqn_bc_only", "pro
 for sysname in sys_names:
     try:
         sys = systems.create_system(sysname, env, seed=42)
-        print(f"  ✓ {sysname}")
+        print(f"  [OK]  {sysname}")
     except Exception as e:
         print(f"  ✗ {sysname}: {e}")
 
@@ -181,7 +181,7 @@ assert constants.FOG_MIPS == 2000
 assert constants.CLOUD_MIPS == 8000
 assert constants.EC_THRESHOLD == 1.0
 assert constants.FOG_RADIUS == 250.0
-print("  ✓ All constants correct")
+print("  [OK]  All constants correct")
 
 # Test 14: DAG
 print("\n[14] DAG Task Definition")
@@ -193,7 +193,7 @@ print(f"  Step 3 (boulder): MI={constants.DAG[3]['MI']}, in={constants.DAG[3]['i
 print(f"  Step 4 (boulder): MI={constants.DAG[4]['MI']}, in={constants.DAG[4]['in_KB']}KB")
 print(f"  Step 5 (pebble): MI={constants.DAG[5]['MI']}, in={constants.DAG[5]['in_KB']}KB")
 assert len(constants.DAG) == 5
-print("  ✓ DAG definition correct")
+print("  [OK]  DAG definition correct")
 
 # Test 15: Fog Nodes
 print("\n[15] Fog Node Locations (Istanbul)")
@@ -201,16 +201,16 @@ print("-" * 70)
 for name, info in constants.FOG_NODES.items():
     print(f"  {name}: {info['name']} at {info['pos']}")
 assert len(constants.FOG_NODES) == 4
-print("  ✓ All 4 fog nodes defined")
+print("  [OK]  All 4 fog nodes defined")
 
 print("\n" + "="*70)
-print("✓✓✓ ALL VERIFICATION TESTS PASSED ✓✓✓")
+print("[OK] [OK] [OK]  ALL VERIFICATION TESTS PASSED [OK] [OK] [OK] ")
 print("="*70)
 print("\nSUMMARY:")
-print("  ✓ All mathematical formulas match paper exactly")
-print("  ✓ All data structures implemented correctly")
-print("  ✓ All 6 systems instantiate properly")
-print("  ✓ All constants match paper specification")
-print("  ✓ DAG and fog nodes properly defined")
-print("  ✓ Simulation engine ready")
+print("  [OK]  All mathematical formulas match paper exactly")
+print("  [OK]  All data structures implemented correctly")
+print("  [OK]  All 6 systems instantiate properly")
+print("  [OK]  All constants match paper specification")
+print("  [OK]  DAG and fog nodes properly defined")
+print("  [OK]  Simulation engine ready")
 print("\n" + "="*70)

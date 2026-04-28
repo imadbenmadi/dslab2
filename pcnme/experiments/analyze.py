@@ -27,10 +27,10 @@ def main():
         description="PCNME Results Analysis"
     )
     parser.add_argument('--input', type=Path,
-                       default='experiments/results/raw_results.csv',
+                       default=Path(__file__).parent / 'results' / 'raw_results.csv',
                        help='Input CSV with raw results')
     parser.add_argument('--output', type=Path,
-                       default='experiments/results/',
+                       default=Path(__file__).parent / 'results',
                        help='Output directory')
     parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING'], default='INFO',
                        help='Logging level')
@@ -51,8 +51,8 @@ def main():
     print(f"\nLoading results from {args.input}...")
     logger.info(f"Loading results from {args.input}...")
     records = MetricsCollector.load_csv(args.input)
-    logger.info(f"✓ Loaded {len(records)} task records")
-    print(f"✓ Loaded {len(records)} task records")
+    logger.info(f"[OK]  Loaded {len(records)} task records")
+    print(f"[OK]  Loaded {len(records)} task records")
 
     # Create analyzer
     logger.debug("Creating results analyzer...")
@@ -98,8 +98,8 @@ def main():
                 ene_ci[0], ene_ci[1], ene_ci[2],
             ])
 
-    logger.info(f"✓ Summary statistics saved to {summary_path}")
-    print(f"\n✓ Summary statistics saved to {summary_path}")
+    logger.info(f"[OK]  Summary statistics saved to {summary_path}")
+    print(f"\n[OK]  Summary statistics saved to {summary_path}")
 
     # By-scenario summary
     logger.info("Grouping results by scenario...")
@@ -127,8 +127,8 @@ def main():
             writer.writerow([system, scenario, len(recs),
                             np.mean(lats), feas, engs])
 
-    logger.info(f"✓ Scenario breakdown saved to {scenario_path}")
-    print(f"✓ Scenario breakdown saved to {scenario_path}")
+    logger.info(f"[OK]  Scenario breakdown saved to {scenario_path}")
+    print(f"[OK]  Scenario breakdown saved to {scenario_path}")
 
     print("\n" + "=" * 70)
     print("Analysis complete!")

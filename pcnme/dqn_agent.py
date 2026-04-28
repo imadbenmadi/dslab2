@@ -6,6 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
+import sqlite3
 import warnings
 from pathlib import Path
 from typing import Tuple, List
@@ -79,7 +80,7 @@ class DQNAgent:
     """DQN agent with online learning and behavioral cloning."""
 
     def __init__(self, state_dim: int = STATE_DIM, action_dim: int = ACTION_DIM,
-                 learning_rate: float = AGENT_LR, gamma: float = GAMMA, hidden_sizes=None):
+                 hidden_sizes=None, learning_rate: float = AGENT_LR, gamma: float = GAMMA):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.learning_rate = learning_rate
@@ -137,21 +138,30 @@ class DQNAgent:
 
         return float(loss.item())
 
-    def pretrain_with_bc(self, bc_dataset: List[Tuple], epochs: int = 20,
+    def pretrain_with_bc(self, db_path: Path, epochs: int = 20,
                         batch_size: int = 32) -> float:
-        """Pre-train with behavioral cloning."""
+        """Pre-train with behavioral cloning using SQLite streaming to save RAM."""
         optimizer = optim.Adam(self.online_net.parameters(), lr=0.001)
         self.bc_loss_history = []
         final_loss = 0.0
+
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
 
         for epoch in range(epochs):
             epoch_loss = 0.0
             n_batches = 0
 
-            for i in range(0, len(bc_dataset), batch_size):
-                batch = bc_dataset[i:i + batch_size]
-                states = torch.tensor(np.array([s for s, _ in batch]), dtype=torch.float32)
-                actions = torch.tensor(np.array([a for _, a in batch]), dtype=torch.long)
+            cursor.execute("SELECT * FROM bc_dataset")
+            
+            while True:
+                rows = cursor.fetchmany(batch_size)
+                if not rows:
+                    break
+                
+                # Extract states (first 11 cols) and action (12th col) from DB row
+                states = torch.tensor(np.array([row[:11] for row in rows]), dtype=torch.float32)
+                actions = torch.tensor(np.array([row[11] for row in rows]), dtype=torch.long)
 
                 q_values = self.online_net(states)
                 loss = bc_loss(q_values, actions)
@@ -167,6 +177,7 @@ class DQNAgent:
             self.bc_loss_history.append(avg_loss)
             final_loss = avg_loss
 
+        conn.close()
         # Sync target network after BC pre-training
         self.target_net.load_state_dict(self.online_net.state_dict())
         return final_loss

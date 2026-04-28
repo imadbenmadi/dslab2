@@ -270,7 +270,7 @@ Critical: SDN routing <10ms possible because:
   ├─ Agent2 decision: Neural network forward pass ~1ms
   ├─ Rule installation: Control plane ~1ms
   ├─ Packet processing: Hardware switching ~<1ms
-  └─ Total: < 10ms ✓ Achievable
+  └─ Total: < 10ms [OK]  Achievable
 ```
 
 ## Practical Example: Real Routing Decision
@@ -307,7 +307,7 @@ Time 45ms: Task starts executing at Fog3
 
 Time 95ms: Execution completes (50ms task)
   └─ Result returned to vehicle
-  └─ Total latency: 95ms < 380ms deadline ✓
+  └─ Total latency: 95ms < 380ms deadline [OK]
 
 Result: Task completes successfully
   ├─ Dynamic routing was critical
@@ -328,12 +328,12 @@ Result: Task completes successfully
 From comprehensive_verification.py:
 
 ```
-✓ Controller initialization: 0 routes installed
-✓ Rule installation: <1ms per rule
-✓ Flow query: Returns valid statistics
-✓ Status reporting: All metrics present
-✓ Integration with Agent2: Accepts decisions
-✓ Real-time performance: Handles 1000s rules
+[OK]  Controller initialization: 0 routes installed
+[OK]  Rule installation: <1ms per rule
+[OK]  Flow query: Returns valid statistics
+[OK]  Status reporting: All metrics present
+[OK]  Integration with Agent2: Accepts decisions
+[OK]  Real-time performance: Handles 1000s rules
 ```
 
 ## Why SDN is Critical

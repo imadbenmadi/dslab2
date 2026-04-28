@@ -205,11 +205,11 @@ NOTIFICATION_DELAY = 0.05   # seconds (detect → notify latency)
 From comprehensive_verification.py:
 
 ```
-✓ Vehicle position updates every step
-✓ Fog handoff detection works (boundary crossing)
-✓ Task migration preserves queue order
-✓ Agents notified of topology changes
-✓ 750 handoffs per simulation without errors
+[OK]  Vehicle position updates every step
+[OK]  Fog handoff detection works (boundary crossing)
+[OK]  Task migration preserves queue order
+[OK]  Agents notified of topology changes
+[OK]  750 handoffs per simulation without errors
 ```
 
 ## Why This Exists

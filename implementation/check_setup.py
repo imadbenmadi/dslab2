@@ -30,7 +30,7 @@ def check_python_packages():
     missing = []
     for module, name in required.items():
         if find_spec(module):
-            print(f"✓ {name}")
+            print(f"[OK]  {name}")
         else:
             print(f"✗ {name} MISSING")
             missing.append(module)
@@ -53,7 +53,7 @@ def check_nats_broker():
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             result = s.connect_ex(("127.0.0.1", 4222))
             if result == 0:
-                print("✓ NATS broker running on localhost:4222")
+                print("[OK]  NATS broker running on localhost:4222")
                 return True
     except Exception as e:
         print(f"✗ Connection check failed: {e}")
@@ -91,7 +91,7 @@ def check_certificates():
     for file in required_files:
         file_path = cert_dir / file
         if file_path.exists():
-            print(f"✓ {file}")
+            print(f"[OK]  {file}")
         else:
             print(f"✗ {file} MISSING")
             missing.append(file)
@@ -102,13 +102,13 @@ def check_certificates():
             from infrastructure.cert_manager import CertificateManager
             mgr = CertificateManager("certs")
             mgr.get_or_create_certs()
-            print("✓ Certificates generated successfully")
+            print("[OK]  Certificates generated successfully")
             return True
         except Exception as e:
             print(f"✗ Certificate generation failed: {e}")
             return False
 
-    print("✓ All certificates present")
+    print("[OK]  All certificates present")
     return True
 
 
@@ -133,7 +133,7 @@ def check_directories():
     for dir_name in required_dirs:
         dir_path = Path(dir_name)
         if dir_path.exists():
-            print(f"✓ {dir_name}/")
+            print(f"[OK]  {dir_name}/")
         else:
             print(f"✗ {dir_name}/ MISSING")
             dir_path.mkdir(parents=True, exist_ok=True)
@@ -169,7 +169,7 @@ def show_status():
     print("=" * 60)
 
     for name, result in results:
-        status = "✓ OK" if result else "✗ FAILED"
+        status = "[OK]  OK" if result else "✗ FAILED"
         print(f"{name:.<40} {status}")
 
     all_ok = all(result for _, result in results)
@@ -211,7 +211,7 @@ if __name__ == "__main__":
         all_ok = show_status()
 
         if all_ok:
-            print("\n✓ All checks passed! System is ready.")
+            print("\n[OK]  All checks passed! System is ready.")
             show_next_steps()
         else:
             print("\n✗ Some checks failed. Please fix the issues above.")

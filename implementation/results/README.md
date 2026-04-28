@@ -256,7 +256,7 @@ React dashboard (frontend, via API/WebSocket):
   results/metrics.py → get_deadline_success_rate()
     ↓
   Dashboard displays live:
-    ├─ Current success rate: 73% ✓
+    ├─ Current success rate: 73% [OK]
     ├─ Avg latency: 156ms
     ├─ Fog1 load: 87%
     └─ Task throughput: 9,850/sec
@@ -279,12 +279,12 @@ Post-simulation:
 From comprehensive_verification.py:
 
 ```
-✓ CARLA trajectories loaded: 50 vehicles
-✓ CRAWDAD bandwidth loaded: Real 4G traces
-✓ YOLOv5 benchmarks loaded: Real latencies
-✓ Metrics collection: 100+ per-task fields
-✓ Deadline tracking: Success rate calculated
-✓ Real data: No synthetic data, all validated
+[OK]  CARLA trajectories loaded: 50 vehicles
+[OK]  CRAWDAD bandwidth loaded: Real 4G traces
+[OK]  YOLOv5 benchmarks loaded: Real latencies
+[OK]  Metrics collection: 100+ per-task fields
+[OK]  Deadline tracking: Success rate calculated
+[OK]  Real data: No synthetic data, all validated
 ```
 
 ## Key Results from Current System

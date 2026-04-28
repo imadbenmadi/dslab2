@@ -21,7 +21,7 @@ def check_postgresql_installed():
     print("Checking PostgreSQL installation...")
     try:
         import psycopg2
-        print(f"✓ psycopg2 version {psycopg2.__version__} found")
+        print(f"[OK]  psycopg2 version {psycopg2.__version__} found")
         return True
     except ImportError:
         print("✗ psycopg2 not installed. Install with: pip install psycopg2-binary")
@@ -46,9 +46,9 @@ def test_raw_connection(host="localhost", port=5432, user="postgres"):
             )
             conn.close()
             if password:
-                print(f"✓ Connected with password: {'*' * len(password)}")
+                print(f"[OK]  Connected with password: {'*' * len(password)}")
             else:
-                print(f"✓ Connected (no password)")
+                print(f"[OK]  Connected (no password)")
             return password
         except OperationalError as e:
             err_msg = str(e)
@@ -91,9 +91,9 @@ def create_database_and_tables(host="localhost", port=5432, user="postgres", pas
         if not db_exists:
             print("Creating database 'smart_city'...")
             cur.execute("CREATE DATABASE smart_city;")
-            print("✓ Database created")
+            print("[OK]  Database created")
         else:
-            print("✓ Database 'smart_city' already exists")
+            print("[OK]  Database 'smart_city' already exists")
         
         cur.close()
         conn.close()
@@ -137,7 +137,7 @@ def create_database_and_tables(host="localhost", port=5432, user="postgres", pas
         for table_sql in tables:
             cur.execute(table_sql)
             table_name = table_sql.split("CREATE TABLE IF NOT EXISTS")[1].split("(")[0].strip()
-            print(f"✓ Table '{table_name}' created/verified")
+            print(f"[OK]  Table '{table_name}' created/verified")
         
         # Create indexes
         indexes = [
@@ -150,13 +150,13 @@ def create_database_and_tables(host="localhost", port=5432, user="postgres", pas
         for index_sql in indexes:
             cur.execute(index_sql)
         
-        print("✓ Indexes created/verified")
+        print("[OK]  Indexes created/verified")
         
         conn.commit()
         cur.close()
         conn.close()
         
-        print("\n✓ Database and tables successfully initialized!")
+        print("\n[OK]  Database and tables successfully initialized!")
         return True
         
     except Error as e:
@@ -171,13 +171,13 @@ def test_redis():
         import redis
         client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, socket_connect_timeout=3)
         client.ping()
-        print(f"✓ Redis connected and responding")
+        print(f"[OK]  Redis connected and responding")
         
         # Test set/get
         client.set("test_key", "test_value")
         val = client.get("test_key")
         if val == "test_value":
-            print(f"✓ Redis read/write working")
+            print(f"[OK]  Redis read/write working")
             client.delete("test_key")
             return True
         else:
@@ -210,12 +210,12 @@ REDIS_URL=redis://localhost:6379/0
 STORE_BATCH_SIZE=100
 STORE_FLUSH_INTERVAL_S=1.0
 """)
-        print(f"✓ .env created")
+        print(f"[OK]  .env created")
     else:
         # Update POSTGRES_DSN if not correct
         content = env_file.read_text()
         if "POSTGRES_DSN" in content:
-            print("✓ .env already has POSTGRES_DSN")
+            print("[OK]  .env already has POSTGRES_DSN")
         env_file.write_text(content)
 
 def main():
@@ -248,7 +248,7 @@ def main():
     update_env_file(password)
     
     print("\n" + "="*70)
-    print("✓ PostgreSQL setup complete!")
+    print("[OK]  PostgreSQL setup complete!")
     print("="*70)
     print("\nYou can now run:")
     print("  python app.py proposed  # Run proposed system")

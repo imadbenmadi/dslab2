@@ -6,6 +6,7 @@ Generates realistic mobility patterns and task workloads.
 import numpy as np
 import csv
 import os
+import sqlite3
 import logging
 from typing import Dict, List, Tuple, Optional
 from pathlib import Path
@@ -266,12 +267,36 @@ def generate_bc_dataset(n_batches: int = 20, batch_size: int = 100, seed: int = 
     logger.info(f"NSGA-II Depth: pop_size={pop_size}, n_gen={n_gen} (set PCNME_NSGA_POP and PCNME_NSGA_GENS to change)")
     logger.info(f"[OK] Generating BC dataset: {n_batches} batches x {batch_size} samples")
     
-    dataset = []
-    all_rows_for_csv = []
     rng = np.random.default_rng(seed)
+
+    # Setup SQLite Database and CSV for low-memory streaming
+    db_path = exp_dir / 'dataset' / 'pretrain.db'
+    csv_path = exp_dir / 'dataset' / 'gen_BC_dataset.csv'
+    
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    cursor.execute("DROP TABLE IF EXISTS bc_dataset")
+    cursor.execute('''
+        CREATE TABLE bc_dataset (
+            s0 REAL, s1 REAL, s2 REAL, s3 REAL,
+            s4 REAL, s5 REAL, s6 REAL, s7 REAL,
+            s8 REAL, s9 REAL, s10 REAL,
+            action INTEGER,
+            nsga_latency_ms REAL,
+            nsga_energy_j REAL
+        )
+    ''')
+    
+    f_csv = open(csv_path, 'w', newline='')
+    writer = csv.writer(f_csv)
+    header = ['fog_A_load', 'fog_B_load', 'fog_C_load', 'fog_D_load', 'fog_A_queue', 'fog_B_queue', 'fog_C_queue', 'fog_D_queue', 'exec_cost_norm', 'speed_norm', 't_exit_norm', 'action', 'nsga_latency_ms', 'nsga_energy_j']
+    writer.writerow(header)
 
     batch_iter = progress(range(n_batches), desc="BC dataset", unit="batch", total=n_batches)
     
+    total_samples = 0
     for batch_idx in batch_iter:
         rhos = rng.uniform(0.20, 0.75, (batch_size, 4))
         qs = rng.uniform(0.0, 1.0, (batch_size, 4))
@@ -283,9 +308,8 @@ def generate_bc_dataset(n_batches: int = 20, batch_size: int = 100, seed: int = 
         t_exit_norm = rng.uniform(0.0, 1.0, (batch_size, 1))
         states = np.hstack([rhos, qs, ec_norm, s_norm, t_exit_norm])
 
-        actions = []
-        optimal_latencies = []
-        optimal_energies = []
+        db_rows = []
+        csv_rows = []
         
         # Cool progress bar for the real math optimization!
         for i in tqdm(range(batch_size), desc=f"Optimizing Batch {batch_idx+1}/{n_batches}", leave=False):
@@ -295,22 +319,22 @@ def generate_bc_dataset(n_batches: int = 20, batch_size: int = 100, seed: int = 
             knee_idx, best_chromosome = real_optimizer.get_knee_point()
             best_fitness = real_optimizer.pareto_fitness[knee_idx]  # [latency, energy]
             
-            actions.append(int(best_chromosome[0]))
-            optimal_latencies.append(best_fitness[0])
-            optimal_energies.append(best_fitness[1])
-
-        for i in range(batch_size):
-            dataset.append((states[i], int(actions[i])))
-            all_rows_for_csv.append((states[i], int(actions[i]), optimal_latencies[i], optimal_energies[i]))
+            action = int(best_chromosome[0])
+            lat = float(best_fitness[0])
+            eng = float(best_fitness[1])
             
-    dataset_path = exp_dir / 'dataset' / 'gen_BC_dataset.csv'
-    dataset_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(dataset_path, 'w', newline='') as f:
-        writer = csv.writer(f)
-        header = ['fog_A_load', 'fog_B_load', 'fog_C_load', 'fog_D_load', 'fog_A_queue', 'fog_B_queue', 'fog_C_queue', 'fog_D_queue', 'exec_cost_norm', 'speed_norm', 't_exit_norm', 'action', 'nsga_latency_ms', 'nsga_energy_j']
-        writer.writerow(header)
-        for state, action, lat, eng in all_rows_for_csv:
-            writer.writerow(list(state) + [action, lat, eng])
-    logger.info(f"[OK] Total dataset size: {len(dataset)} samples")
-    return dataset
+            row_data = list(states[i]) + [action, lat, eng]
+            db_rows.append(tuple(row_data))
+            csv_rows.append(row_data)
+
+        # Stream safely to disk to prevent MemoryError
+        cursor.executemany("INSERT INTO bc_dataset VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", db_rows)
+        conn.commit()
+        writer.writerows(csv_rows)
+        total_samples += batch_size
+        
+    f_csv.close()
+    conn.close()
+
+    logger.info(f"[OK] Total dataset size: {total_samples} samples")
+    return db_path

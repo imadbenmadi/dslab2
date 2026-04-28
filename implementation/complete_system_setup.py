@@ -36,7 +36,7 @@ def run_command(cmd, description):
     try:
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
-            print(f"✓ {description} successful\n")
+            print(f"[OK]  {description} successful\n")
             return True
         else:
             print(f"✗ {description} failed")
@@ -82,7 +82,7 @@ def check_python_packages():
                 shell=True,
                 timeout=60
             )
-        print(f"✓ {package} ready")
+        print(f"[OK]  {package} ready")
     
     print()
 
@@ -107,7 +107,7 @@ def setup_postgresql():
         )
         print(result.stdout)
         if result.returncode == 0:
-            print("✓ PostgreSQL setup complete\n")
+            print("[OK]  PostgreSQL setup complete\n")
             return True
         else:
             print(f"✗ PostgreSQL setup failed:")
@@ -133,7 +133,7 @@ def setup_redis():
     )
     
     if result.returncode == 0 and b"PONG" in result.stdout:
-        print("✓ Redis is running and responding\n")
+        print("[OK]  Redis is running and responding\n")
         return True
     else:
         print("✗ Redis is not running")
@@ -154,7 +154,7 @@ def verify_carla_data():
     
     if csv_path.exists():
         lines = len(csv_path.read_text().split('\n'))
-        print(f"✓ Found {csv_path}")
+        print(f"[OK]  Found {csv_path}")
         print(f"  Data points: {lines:,}")
         print(f"  This is real Istanbul vehicle trajectory data\n")
         return True
@@ -179,13 +179,13 @@ def test_baselines():
     
     for path, name in baselines:
         if Path(path).exists():
-            print(f"✓ {name} - implemented")
+            print(f"[OK]  {name} - implemented")
         else:
             print(f"✗ {name} - MISSING")
             all_ok = False
     
     if all_ok:
-        print(f"\n✓ All baselines ready for comparison\n")
+        print(f"\n[OK]  All baselines ready for comparison\n")
     return all_ok
 
 
@@ -221,13 +221,13 @@ def main():
     print_section("SETUP SUMMARY")
     
     for step_name, ok in steps_ok:
-        status = "✓" if ok else "✗"
+        status = "[OK] " if ok else "✗"
         print(f"{status} {step_name}")
     
     critical_ok = all(ok for name, ok in steps_ok if name in ["Python Packages", "PostgreSQL", "Baselines"])
     
     if critical_ok:
-        print(f"\n✓ All critical components ready!\n")
+        print(f"\n[OK]  All critical components ready!\n")
         print("Next steps:")
         print("\n  1. Start the backend:")
         print("     python app.py proposed\n")

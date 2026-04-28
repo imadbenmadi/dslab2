@@ -24,10 +24,10 @@ def main():
         description="PCNME Results Visualization"
     )
     parser.add_argument('--input', type=Path,
-                       default='experiments/results/',
+                       default=Path(__file__).parent / 'results',
                        help='Input directory with raw_results.csv')
     parser.add_argument('--output', type=Path,
-                       default='experiments/figures/',
+                       default=Path(__file__).parent / 'figures',
                        help='Output directory for figures')
     parser.add_argument('--dpi', type=int, default=300,
                        help='Figure DPI')
@@ -42,7 +42,7 @@ def main():
     records_path = args.input / 'raw_results.csv'
     print(f"\nLoading results from {records_path}...")
     records = MetricsCollector.load_csv(records_path)
-    print(f"✓ Loaded {len(records)} records")
+    print(f"[OK]  Loaded {len(records)} records")
 
     # Create analyzer
     analyzer = ResultsAnalyzer(records)
