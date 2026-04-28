@@ -164,26 +164,25 @@ def select_handoff_mode(t_exec_ms: float, t_exit_s: float) -> str:
 # ============================================================================
 
 def build_state(fog_loads: dict, fog_queues: dict,
-                step_MI: int, bw_util: float,
+                step_MI: int,
                 vehicle_speed_ms: float, t_exit_s: float,
-                deadline_remaining_ms: float,
                 theta: float = EC_THRESHOLD,
                 q_max: float = 50.0,
                 t_exit_max: float = T_EXIT_MAX,
-                speed_max: float = SPEED_MAX_MS,
-                deadline_ref: float = 200.0) -> list:
+                speed_max: float = SPEED_MAX_MS) -> list:
     """
+    Build 11-dimensional state vector per methodology Eq. (21):
     s = (rho_A, rho_B, rho_C, rho_D,
          q_A/q_max, q_B/q_max, q_C/q_max, q_D/q_max,
-         EC_hat, B_hat, speed_hat, T_exit_hat, deadline_hat)
-    13 dimensions, all in [0, 1].
+         EC_hat, speed_hat, T_exit_hat)
+    
+    Removed: B_hat (network is static), deadline_hat (captured in T_exit).
+    All components normalized to [0, 1].
     """
     ec = compute_ec(step_MI)
     ec_hat = min(ec / theta, 1.0)
-    b_hat = min(bw_util, 1.0)
     s_hat = min(vehicle_speed_ms / speed_max, 1.0)
     te_hat = min(t_exit_s / t_exit_max, 1.0)
-    dl_hat = min(deadline_remaining_ms / deadline_ref, 1.0)
     return [
         fog_loads.get("A", 0.0),
         fog_loads.get("B", 0.0),
@@ -194,10 +193,8 @@ def build_state(fog_loads: dict, fog_queues: dict,
         fog_queues.get("C", 0) / q_max,
         fog_queues.get("D", 0) / q_max,
         ec_hat,
-        b_hat,
         s_hat,
         te_hat,
-        dl_hat,
     ]
 
 

@@ -51,7 +51,7 @@ N_OFFLINE_BATCHES = 1000
 BATCH_SIZE_NSGA = 100
 
 # DQN configuration
-STATE_DIM = 13
+STATE_DIM = 11  # ρ_1-4, q_1-4, EC_hat, s_hat, T_exit_hat (removed: B_hat, d_rem)
 ACTION_DIM = 5  # Fog A, B, C, D, Cloud
 HIDDEN = [256, 128]
 AGENT_LR = 0.001

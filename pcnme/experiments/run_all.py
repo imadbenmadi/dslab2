@@ -16,15 +16,17 @@ from datetime import datetime
 import sys
 from typing import Optional
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add parent directory to path (dslab2 root)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from pcnme import (
     TaskRecord, MetricsCollector,
     DataManager, SimulationEnvironment, create_system,
     DQNAgent, SEEDS, SCENARIO_SPEEDS,
-    N_VEHICLES, SIM_DURATION_S, WARMUP_S, DAG
+    N_VEHICLES, SIM_DURATION_S, WARMUP_S, DAG, TOTAL_DEADLINE_MS
 )
 from pcnme.progress import progress
+from pcnme.utilities import setup_logging, get_logger
 
 
 class PCNMESimulator:
@@ -32,14 +34,16 @@ class PCNMESimulator:
     Main PCNME simulator orchestrating task execution.
     """
 
-    def __init__(self, env: SimulationEnvironment, system, data_manager: DataManager):
+    def __init__(self, env: SimulationEnvironment, system, data_manager: DataManager, system_name: str = None, logger=None):
         self.env = env
         self.system = system
         self.data_manager = data_manager
+        self.system_name = system_name or system.__class__.__name__
         self.metrics_collector = MetricsCollector()
+        self.logger = logger or logging.getLogger('PCNME.RunAll')
 
     def run_single_task(self, vehicle_id: str, task_id: str,
-                       scenario: str, seed: int):
+                       scenario: str, seed: int, sim_time_s: float = 0.0):
         """
         Execute a single task (all 5 DAG steps) for a vehicle.
 
@@ -47,8 +51,8 @@ class PCNMESimulator:
             TaskRecord with complete results
         """
         # Get vehicle state at current time
-        vehicle_state = self.env.get_vehicle_state(vehicle_id)
-        if not vehicle_state or not vehicle_state['is_active']:
+        vehicle = self.env.vehicles.get(vehicle_id)
+        if not vehicle or not vehicle.is_active(sim_time_s):
             return None
 
         # Get fog state
@@ -57,11 +61,11 @@ class PCNMESimulator:
         # Initialize results
         results = {
             'task_id': task_id,
-            'system': self.system.system_name,
+            'system': self.system_name,
             'seed': seed,
             'scenario': scenario,
             'vehicle_id': vehicle_id,
-            'sim_time_s': self.env.sim_time_s,
+            'sim_time_s': sim_time_s,
             'step2_latency_ms': 0.0,
             'step3_latency_ms': 0.0,
             'step4_latency_ms': 0.0,
@@ -79,14 +83,14 @@ class PCNMESimulator:
             'handoff_mode': 'none',
             'handoff_success': False,
             't_exit_at_decision': 0.0,
-            'fog_A_load': fog_state['loads']['A'],
-            'fog_B_load': fog_state['loads']['B'],
-            'fog_C_load': fog_state['loads']['C'],
-            'fog_D_load': fog_state['loads']['D'],
-            'fog_A_queue': fog_state['queues']['A'],
-            'fog_B_queue': fog_state['queues']['B'],
-            'fog_C_queue': fog_state['queues']['C'],
-            'fog_D_queue': fog_state['queues']['D'],
+            'fog_A_load': 0.0,
+            'fog_B_load': 0.0,
+            'fog_C_load': 0.0,
+            'fog_D_load': 0.0,
+            'fog_A_queue': 0,
+            'fog_B_queue': 0,
+            'fog_C_queue': 0,
+            'fog_D_queue': 0,
             'agent_q_max': None,
             'agent_epsilon': None,
             'agent_reward': None,
@@ -99,38 +103,28 @@ class PCNMESimulator:
 
         # Execute each step
         for step_id in [2, 3, 4, 5]:
-            # Skip step 1 (always device-local) and step 4 (always cloud, not recorded)
-            if step_id == 1:
-                continue
+            step_mi = DAG[step_id]['MI']
+            step_data = DAG[step_id]['in_KB']  # Input data for this step
             
-            # Step 4 is boulder - execute it but don't record destination decision
-            if step_id == 4:
-                destination = 'cloud'
-                exec_result = self.env.execute_task(
-                    task_id, step_id, destination, vehicle_id
-                )
-                results[f'step{step_id}_latency_ms'] = exec_result['latency_ms']
-                results[f'step{step_id}_energy_j'] = exec_result['energy_j']
-                total_latency += exec_result['latency_ms']
-                total_energy += exec_result['energy_j']
-                continue
-
-            # Select destination for pebbles/boulders with decisions (steps 2, 3, 5)
+            # Select destination using system's policy
             destination = self.system.select_destination(
-                step_id, vehicle_id, fog_state
+                vehicle_id, step_id, step_mi, sim_time_s
             )
 
-            # Execute step
-            exec_result = self.env.execute_task(
-                task_id, step_id, destination, vehicle_id
-            )
-
-            latency = exec_result['latency_ms']
-            energy = exec_result['energy_j']
+            # Execute task
+            if destination == 'cloud':
+                latency, energy = self.env.execute_task_on_cloud(
+                    step_mi, step_data, vehicle_id, sim_time_s
+                )
+            else:
+                latency, energy = self.env.execute_task_on_fog(
+                    step_mi, step_data, destination, vehicle_id, sim_time_s
+                )
 
             results[f'step{step_id}_latency_ms'] = latency
             results[f'step{step_id}_energy_j'] = energy
-            results[f'step{step_id}_dest'] = destination
+            if step_id != 4:  # Don't record step 4 destination
+                results[f'step{step_id}_dest'] = destination
 
             total_latency += latency
             total_energy += energy
@@ -144,10 +138,15 @@ class PCNMESimulator:
 
         results['total_latency_ms'] = total_latency
         results['total_energy_j'] = total_energy
-        results['deadline_met'] = total_latency <= 200.0
+        results['deadline_met'] = total_latency <= TOTAL_DEADLINE_MS
+
+        # Extract fog loads and queues from fog_state
+        for node_name in ['A', 'B', 'C', 'D']:
+            results[f'fog_{node_name}_load'] = fog_state[node_name]['load']
+            results[f'fog_{node_name}_queue'] = fog_state[node_name]['queue']
 
         # Check handoff conditions
-        t_exit_a = self.env.compute_t_exit_to_fog(vehicle_id, 'A')
+        t_exit_a = self.env.compute_t_exit_to_fog(vehicle_id, 'A', sim_time_s)
         results['t_exit_at_decision'] = t_exit_a
         results['handoff_occurred'] = t_exit_a < 10.0  # simplified
         if results['handoff_occurred']:
@@ -173,48 +172,56 @@ class PCNMESimulator:
         if n_vehicles is None:
             n_vehicles = N_VEHICLES
 
-        print(f"  Loading traces for {scenario}...")
+        self.logger.debug(f"  Loading traces for {scenario}...")
         traces = self.data_manager.get_traces(
             scenario, n_vehicles=n_vehicles, seed=seed
         )
 
-        print(f"  Initializing {len(traces)} vehicles...")
-        self.env.initialize(traces)
+        self.logger.debug(f"  Initializing {len(traces)} vehicles...")
+        # Add vehicles to environment
+        from pcnme import Vehicle
+        for trace in traces:
+            vehicle = Vehicle(trace['vehicle_id'], trace['xs'], trace['ys'], 
+                            trace['speeds'], trace['headings'], trace['timestamps'])
+            self.env.add_vehicle(vehicle)
 
         task_records = []
         task_counter = 0
 
-        # Simulation loop
-        print(f"  Running simulation (duration: {SIM_DURATION_S}s)...")
-        pbar = progress(
-            total=int(SIM_DURATION_S),
-            desc=f"{scenario} seed={seed}",
-            unit="s",
-            leave=False,
-        )
+        # Simulation loop (generate tasks at fixed time points)
+        self.logger.debug(f"  Running simulation (duration: {SIM_DURATION_S}s)...")
+        n_steps = int(SIM_DURATION_S)
+        pbar = progress(total=n_steps, desc=f"{scenario} seed={seed}", 
+                       unit="s", leave=False)
+        
         try:
-            while self.env.sim_time_s < SIM_DURATION_S:
-                # Generate tasks for active vehicles
-                for vehicle_id in self.env.vehicles:
-                    # One task per vehicle per 10 seconds
-                    if int(self.env.sim_time_s) % 10 == 0:
-                        task_id = f"{scenario}_{seed}_{vehicle_id}_{task_counter}"
+            for sim_time_s in range(int(WARMUP_S), int(SIM_DURATION_S), 1):
+                # Skip warmup period
+                if sim_time_s < WARMUP_S:
+                    pbar.update(1)
+                    continue
+                
+                # Generate one task per active vehicle per 10 seconds
+                if sim_time_s % 10 == 0:
+                    for vehicle_id in list(self.env.vehicles.keys()):
+                        # Check if vehicle is active at this time
+                        vehicle = self.env.vehicles[vehicle_id]
+                        if vehicle.is_active(sim_time_s):
+                            task_id = f"{scenario}_{seed}_{vehicle_id}_{task_counter}"
+                            record = self.run_single_task(
+                                vehicle_id, task_id, scenario, seed, sim_time_s
+                            )
+                            if record:
+                                task_records.append(record)
+                                task_counter += 1
 
-                        record = self.run_single_task(
-                            vehicle_id, task_id, scenario, seed
-                        )
-
-                        if record:
-                            task_records.append(record)
-                            task_counter += 1
-
-                # Step environment
-                self.env.step()
+                # Update fog loads
+                self.env.update_fog_loads(dt_s=1.0)
                 pbar.update(1)
         finally:
             pbar.close()
 
-        print(f"  ✓ Completed: {len(task_records)} task records")
+        self.logger.info(f"  ✓ Completed: {len(task_records)} task records")
         return task_records
 
 
@@ -236,17 +243,33 @@ def main():
                        help='Scenarios to run')
     parser.add_argument('--n-vehicles', type=int, default=N_VEHICLES,
                        help='Number of vehicles per scenario')
+    parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING'], default='INFO',
+                       help='Logging level')
 
     args = parser.parse_args()
 
+    # Setup logging
+    logger = setup_logging(args.output.parent / 'logs', 'run_all', args.log_level)
+    
     print("=" * 70)
     print("PCNME FULL SIMULATION SUITE")
     print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("PCNME FULL SIMULATION SUITE")
+    logger.info("=" * 70)
+    
     print(f"Systems: {args.systems}")
     print(f"Scenarios: {args.scenarios}")
     print(f"Seeds: {SEEDS}")
     print(f"Total runs: {len(args.systems)} × {len(args.scenarios)} × {len(SEEDS)}")
     print("=" * 70 + "\n")
+    
+    logger.info(f"Systems: {args.systems}")
+    logger.info(f"Scenarios: {args.scenarios}")
+    logger.info(f"Seeds: {SEEDS}")
+    logger.info(f"Total runs: {len(args.systems)} × {len(args.scenarios)} × {len(SEEDS)}")
+    logger.info(f"Output: {args.output}")
+    logger.info(f"Weights dir: {args.weights}")
 
     data_manager = DataManager()
     metrics_collector = MetricsCollector()
@@ -257,10 +280,12 @@ def main():
     runs_pbar = progress(total=total_tasks, desc="All runs", unit="run")
 
     start_time = datetime.now()
+    logger.info(f"Simulation started at {start_time}")
 
     # Loop: systems × scenarios × seeds
     for system_name in args.systems:
         print(f"\n[SYSTEM: {system_name}]")
+        logger.info(f"[SYSTEM: {system_name}]")
 
         # Load DQN if needed
         dqn_agent = None
@@ -270,23 +295,27 @@ def main():
 
             weights_file = args.weights / 'dqn_bc_pretrained.pt'
             if weights_file.exists():
-                print(f"  Loading pre-trained weights from {weights_file}")
+                logger.info(f"  Loading pre-trained weights from {weights_file}")
                 dqn_agent.load_weights(weights_file)
             else:
-                print(f"  ⚠ Weights file not found: {weights_file}")
+                logger.warning(f"  Weights file not found: {weights_file}")
 
         for scenario in args.scenarios:
             print(f"  [{scenario}]")
+            logger.info(f"  [{scenario}]")
 
             for seed in SEEDS:
                 print(f"    Seed {seed}...", end='', flush=True)
 
+                # Set random seed
+                np.random.seed(seed)
+
                 # Create environment and system
-                env = SimulationEnvironment(seed=seed)
+                env = SimulationEnvironment()
                 system = create_system(system_name, env, dqn_agent, seed=seed)
 
                 # Run simulator
-                simulator = PCNMESimulator(env, system, data_manager)
+                simulator = PCNMESimulator(env, system, data_manager, system_name, logger=logger)
                 task_records = simulator.run_scenario(scenario, seed,
                                                       args.n_vehicles)
 
@@ -297,21 +326,29 @@ def main():
                 completed_tasks += 1
                 runs_pbar.update(1)
                 elapsed = (datetime.now() - start_time).total_seconds()
-                print(f" {len(task_records)} tasks | "
-                      f"{completed_tasks}/{total_tasks} | "
-                      f"Elapsed: {elapsed/60:.1f}m")
+                msg = f" {len(task_records)} tasks | {completed_tasks}/{total_tasks} | Elapsed: {elapsed/60:.1f}m"
+                print(msg)
+                logger.debug(msg)
 
     runs_pbar.close()
 
     # Save results
     print(f"\nSaving {len(metrics_collector.records)} records to {args.output}")
+    logger.info(f"Saving {len(metrics_collector.records)} records to {args.output}")
     metrics_collector.save_csv(args.output)
 
+    elapsed_total = (datetime.now() - start_time).total_seconds()
     print("\n" + "=" * 70)
     print("SIMULATION COMPLETE")
     print("=" * 70)
-    print(f"Total time: {(datetime.now() - start_time).total_seconds() / 60:.1f} minutes")
+    print(f"Total time: {elapsed_total / 60:.1f} minutes")
     print(f"Output: {args.output}")
+    
+    logger.info("=" * 70)
+    logger.info("SIMULATION COMPLETE")
+    logger.info("=" * 70)
+    logger.info(f"Total time: {elapsed_total / 60:.1f} minutes")
+    logger.info(f"Output: {args.output}")
 
 
 if __name__ == '__main__':

@@ -107,7 +107,7 @@ class DQNColdStartSystem(BaseSystem):
         t_exit = self.env.compute_t_exit_to_fog(vehicle_id, "A", sim_time_s)
 
         from .formulas import build_state
-        state = build_state(fog_loads, fog_queues, step_MI, 0.5, speed, t_exit, 100.0)
+        state = build_state(fog_loads, fog_queues, step_MI, speed, t_exit)
 
         action = self.agent.select_action(state, training=True)
         actions_map = ["A", "B", "C", "D", "cloud"]
@@ -136,7 +136,7 @@ class DQNBCOnlySystem(BaseSystem):
         t_exit = self.env.compute_t_exit_to_fog(vehicle_id, "A", sim_time_s)
 
         from .formulas import build_state
-        state = build_state(fog_loads, fog_queues, step_MI, 0.5, speed, t_exit, 100.0)
+        state = build_state(fog_loads, fog_queues, step_MI, speed, t_exit)
 
         action = self.agent.select_action(state, training=False)
         actions_map = ["A", "B", "C", "D", "cloud"]
@@ -162,7 +162,7 @@ class ProposedSystem(BaseSystem):
         t_exit = self.env.compute_t_exit_to_fog(vehicle_id, "A", sim_time_s)
 
         from .formulas import build_state
-        state = build_state(fog_loads, fog_queues, step_MI, 0.5, speed, t_exit, 100.0)
+        state = build_state(fog_loads, fog_queues, step_MI, speed, t_exit)
 
         action = self.agent.select_action(state, training=True)
         actions_map = ["A", "B", "C", "D", "cloud"]

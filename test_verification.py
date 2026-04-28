@@ -86,18 +86,18 @@ assert t_exit > 0 and t_exit < 30  # Vehicle moving away should have reasonable 
 print("  ✓ Valid T_exit computation for moving vehicle")
 
 # Test 7: State Vector
-print("\n[7] DQN State Vector - 13 normalized dims")
+print("\n[7] DQN State Vector - 11 normalized dims (per methodology)")
 print("-" * 70)
 state = formulas.build_state(
     fog_loads={"A": 0.3, "B": 0.5, "C": 0.4, "D": 0.6},
     fog_queues={"A": 10, "B": 15, "C": 5, "D": 20},
-    step_MI=200, bw_util=0.5, vehicle_speed_ms=15,
-    t_exit_s=5, deadline_remaining_ms=100
+    step_MI=200, vehicle_speed_ms=15,
+    t_exit_s=5
 )
 print(f"  State dimensions: {len(state)}")
 print(f"  Sample: {[f'{v:.2f}' for v in state[:5]]} ...")
-assert len(state) == 13 and all(0 <= v <= 1 for v in state)
-print("  ✓ All 13 dimensions normalized to [0,1]")
+assert len(state) == 11 and all(0 <= v <= 1 for v in state)
+print("  ✓ All 11 dimensions normalized to [0,1]")
 
 # Test 8: Reward
 print("\n[8] Reward Function")

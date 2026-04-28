@@ -14,10 +14,12 @@ from pathlib import Path
 import csv
 import sys
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add parent directory to path (dslab2 root)
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from pcnme import MetricsCollector, ResultsAnalyzer
 from pcnme.progress import progress
+from pcnme.utilities import setup_logging, get_logger
 
 
 def main():
@@ -30,31 +32,45 @@ def main():
     parser.add_argument('--output', type=Path,
                        default='experiments/results/',
                        help='Output directory')
+    parser.add_argument('--log-level', choices=['DEBUG', 'INFO', 'WARNING'], default='INFO',
+                       help='Logging level')
 
     args = parser.parse_args()
+
+    # Setup logging
+    logger = setup_logging(args.output / 'logs', 'analyze', args.log_level)
 
     print("=" * 70)
     print("PCNME RESULTS ANALYSIS")
     print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("PCNME RESULTS ANALYSIS")
+    logger.info("=" * 70)
 
     # Load records
     print(f"\nLoading results from {args.input}...")
+    logger.info(f"Loading results from {args.input}...")
     records = MetricsCollector.load_csv(args.input)
+    logger.info(f"✓ Loaded {len(records)} task records")
     print(f"✓ Loaded {len(records)} task records")
 
     # Create analyzer
+    logger.debug("Creating results analyzer...")
     analyzer = ResultsAnalyzer(records)
 
     # Generate summary table
     print("\n" + "=" * 120)
+    logger.info("Generating summary table...")
     analyzer.generate_summary_table()
 
     # Statistical significance tests
+    logger.info("Computing significance tests...")
     analyzer.compute_significance_tests()
 
     # Save summary statistics
     args.output.mkdir(parents=True, exist_ok=True)
 
+    logger.info("Computing system metrics...")
     metrics = analyzer.compute_system_metrics()
     summary_path = args.output / 'summary_overall.csv'
 
@@ -82,9 +98,11 @@ def main():
                 ene_ci[0], ene_ci[1], ene_ci[2],
             ])
 
+    logger.info(f"✓ Summary statistics saved to {summary_path}")
     print(f"\n✓ Summary statistics saved to {summary_path}")
 
     # By-scenario summary
+    logger.info("Grouping results by scenario...")
     scenario_group = {}
     for record in progress(records, desc="Grouping by scenario", unit="record", total=len(records)):
         key = (record.system, record.scenario)
@@ -109,11 +127,15 @@ def main():
             writer.writerow([system, scenario, len(recs),
                             np.mean(lats), feas, engs])
 
+    logger.info(f"✓ Scenario breakdown saved to {scenario_path}")
     print(f"✓ Scenario breakdown saved to {scenario_path}")
 
     print("\n" + "=" * 70)
     print("Analysis complete!")
     print("=" * 70)
+    logger.info("=" * 70)
+    logger.info("Analysis complete!")
+    logger.info("=" * 70)
 
 
 if __name__ == '__main__':

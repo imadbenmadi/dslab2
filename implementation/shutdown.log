@@ -1,4 +1,11 @@
  
-[Tue 04/14/2026  0:36:41.41] STOP.bat invoked 
-time="2026-04-14T00:36:41+02:00" level=warning msg="C:\\Users\\imed\\Desktop\\dslab2\\implementation\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"
-[Tue 04/14/2026  0:36:41.47] docker compose down OK 
+[Tue 04/28/2026 14:29:42.35] STOP.bat invoked 
+[Tue 04/28/2026 14:29:42.37] Stopping backend PID 1128 
+SUCCESS: The process with PID 26784 (child process of PID 1128) has been terminated.
+SUCCESS: The process with PID 24924 (child process of PID 1128) has been terminated.
+SUCCESS: The process with PID 1128 (child process of PID 24224) has been terminated.
+[Tue 04/28/2026 14:29:42.63] Stopping frontend PID 19464 
+SUCCESS: The process with PID 18264 (child process of PID 19464) has been terminated.
+SUCCESS: The process with PID 8280 (child process of PID 19464) has been terminated.
+SUCCESS: The process with PID 19464 (child process of PID 20328) has been terminated.
+[Tue 04/28/2026 14:29:42.94] Docker not found 

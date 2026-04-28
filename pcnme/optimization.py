@@ -60,46 +60,136 @@ class SchedulingProblem:
 
 
 class NSGAIIOptimizer:
-    """NSGA-II multi-objective optimizer."""
+    """NSGA-II multi-objective optimizer with MMDE."""
 
-    def __init__(self, problem: SchedulingProblem, pop_size: int = NSGA_POP,
+    def __init__(self, problem: SchedulingProblem = None, pop_size: int = NSGA_POP,
                  n_gen: int = NSGA_GENS):
+        if problem is None:
+            problem = SchedulingProblem()
         self.problem = problem
         self.pop_size = pop_size
         self.n_gen = n_gen
+        self.pareto_pop = []
+        self.pareto_fitness = []
 
     def optimize(self) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """
-        Run NSGA-II optimization.
+        Run NSGA-II optimization with MMDE mutations.
         Returns: (pareto_front_objectives, pareto_solutions)
         """
-        # Simplified NSGA-II: random initialization + selection
+        # Initialize population
         pop = np.random.randint(0, 5, (self.pop_size, 3)).astype(float)
         fitness = np.array([self.problem.evaluate(ind) for ind in pop])
 
         for gen in range(self.n_gen):
-            # Simple mutation
-            new_pop = pop.copy()
-            for i in range(self.pop_size):
-                if np.random.random() < 0.3:
-                    idx = np.random.randint(3)
-                    new_pop[i, idx] = np.random.randint(0, 5)
-
+            # MMDE mutation for diversity
+            new_pop = self._mmde_mutation(pop)
             new_fitness = np.array([self.problem.evaluate(ind) for ind in new_pop])
 
-            # Simple selection: keep best by first objective
-            combined = np.vstack([pop, new_pop])
+            # Combine and select best via non-dominated sorting
+            combined_pop = np.vstack([pop, new_pop])
             combined_fitness = np.vstack([fitness, new_fitness])
-            indices = np.argsort(combined_fitness[:, 0])[:self.pop_size]
-            pop = combined[indices]
-            fitness = combined_fitness[indices]
 
-        # Extract Pareto front
+            # Fast non-dominated sorting
+            fronts = self._fast_nondominated_sort(combined_fitness)
+            
+            # Select new population
+            pop = []
+            fitness_list = []
+            for front in fronts:
+                if len(pop) + len(front) <= self.pop_size:
+                    pop.extend(combined_pop[front])
+                    fitness_list.extend(combined_fitness[front])
+                else:
+                    # Crowding distance for last front
+                    remaining = self.pop_size - len(pop)
+                    dist = self._crowding_distance(combined_fitness[front])
+                    selected_idx = np.argsort(-dist)[:remaining]
+                    pop.extend(combined_pop[front[selected_idx]])
+                    fitness_list.extend(combined_fitness[front[selected_idx]])
+                    break
+
+            pop = np.array(pop[:self.pop_size])
+            fitness = np.array(fitness_list[:self.pop_size])
+
+        # Extract Pareto front from final population
         pareto_indices = self._get_pareto_front(fitness)
-        pareto_fitness = fitness[pareto_indices]
-        pareto_pop = pop[pareto_indices]
+        self.pareto_fitness = fitness[pareto_indices]
+        self.pareto_pop = pop[pareto_indices]
 
-        return list(pareto_fitness), list(pareto_pop)
+        return list(self.pareto_fitness), list(self.pareto_pop)
+
+    def _mmde_mutation(self, pop: np.ndarray) -> np.ndarray:
+        """Apply MMDE (Multimodal Mutation Differential Evolution) mutations."""
+        n_pop = len(pop)
+        mutant_pop = []
+
+        for i in range(n_pop):
+            # Select three random distinct individuals
+            idx = np.random.choice(n_pop, 3, replace=False)
+            r1, r2, r3 = idx[0], idx[1], idx[2]
+
+            # MMDE mutation: v = pop[r1] + F * (pop[r2] - pop[r3])
+            mutant = pop[r1] + MMDE_F * (pop[r2] - pop[r3])
+            mutant = np.clip(mutant, 0, 4)  # Clamp to valid range
+
+            # Binomial crossover with CR
+            trial = pop[i].copy()
+            for j in range(len(pop[i])):
+                if np.random.random() < MMDE_CR:
+                    trial[j] = mutant[j]
+
+            mutant_pop.append(trial.astype(float))
+
+        return np.array(mutant_pop)
+
+    def _fast_nondominated_sort(self, fitness: np.ndarray):
+        """Fast non-dominated sorting (Deb et al., 2002)."""
+        n = len(fitness)
+        domination_count = np.zeros(n)
+        dominated_solutions = [[] for _ in range(n)]
+
+        for i in range(n):
+            for j in range(i + 1, n):
+                if (fitness[i] <= fitness[j]).all() and (fitness[i] < fitness[j]).any():
+                    dominated_solutions[i].append(j)
+                    domination_count[j] += 1
+                elif (fitness[j] <= fitness[i]).all() and (fitness[j] < fitness[i]).any():
+                    dominated_solutions[j].append(i)
+                    domination_count[i] += 1
+
+        fronts = []
+        front = np.where(domination_count == 0)[0]
+        while len(front) > 0:
+            fronts.append(front)
+            next_front = []
+            for i in front:
+                for j in dominated_solutions[i]:
+                    domination_count[j] -= 1
+                    if domination_count[j] == 0:
+                        next_front.append(j)
+            front = np.array(next_front)
+
+        return fronts
+
+    def _crowding_distance(self, fitness: np.ndarray) -> np.ndarray:
+        """Calculate crowding distance for fitness values."""
+        n = len(fitness)
+        distance = np.zeros(n)
+
+        for m in range(fitness.shape[1]):
+            sorted_idx = np.argsort(fitness[:, m])
+            distance[sorted_idx[0]] = distance[sorted_idx[-1]] = float('inf')
+
+            f_min = fitness[sorted_idx[0], m]
+            f_max = fitness[sorted_idx[-1], m]
+
+            if f_max - f_min > 0:
+                for i in range(1, n - 1):
+                    distance[sorted_idx[i]] += (fitness[sorted_idx[i + 1], m] - 
+                                                fitness[sorted_idx[i - 1], m]) / (f_max - f_min)
+
+        return distance
 
     def _get_pareto_front(self, fitness: np.ndarray) -> np.ndarray:
         """Get indices of non-dominated solutions."""
@@ -112,19 +202,20 @@ class NSGAIIOptimizer:
                         break
         return np.where(~is_dominated)[0]
 
-    def get_knee_point(self, objectives: List[np.ndarray]) -> np.ndarray:
-        """Find knee point (best compromise) solution."""
-        objectives = np.array(objectives)
-        if len(objectives) == 0:
-            return np.array([1, 1, 1])
+    def get_knee_point(self) -> Tuple[int, np.ndarray]:
+        """Find knee point (best compromise) solution from Pareto front."""
+        if len(self.pareto_fitness) == 0:
+            return 0, np.array([1, 1, 1])
 
-        # Normalized distance to utopian point
+        objectives = self.pareto_fitness
+        
+        # Normalize objectives
         min_lat = objectives[:, 0].min()
         max_lat = objectives[:, 0].max()
         min_eng = objectives[:, 1].min()
         max_eng = objectives[:, 1].max()
 
-        normalized = np.zeros_like(objectives)
+        normalized = np.zeros_like(objectives, dtype=float)
         if max_lat > min_lat:
             normalized[:, 0] = (objectives[:, 0] - min_lat) / (max_lat - min_lat)
         else:
@@ -134,9 +225,11 @@ class NSGAIIOptimizer:
         else:
             normalized[:, 1] = 0.5
 
+        # Distance to Utopian point (0, 0)
         distance = np.sqrt((normalized**2).sum(axis=1))
         knee_idx = np.argmin(distance)
-        return knee_idx
+        
+        return int(knee_idx), self.pareto_pop[knee_idx]
 
 
 class MMDEOptimizer:
@@ -216,10 +309,9 @@ def generate_bc_dataset_from_nsga2(n_samples: int = N_OFFLINE_BATCHES) -> List[T
         step_MI = np.random.choice([20, 200, 2000, 8000, 50])
         vehicle_speed = np.random.uniform(5, 20)
         t_exit = np.random.uniform(1, 10)
-        deadline_remaining = np.random.uniform(50, 200)
 
-        state = build_state(fog_loads, fog_queues, step_MI, 0.5,
-                           vehicle_speed, t_exit, deadline_remaining)
+        state = build_state(fog_loads, fog_queues, step_MI,
+                           vehicle_speed, t_exit)
 
         # Pick random Pareto solution as target action
         if pareto_solutions:

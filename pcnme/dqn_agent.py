@@ -79,14 +79,17 @@ class DQNAgent:
     """DQN agent with online learning and behavioral cloning."""
 
     def __init__(self, state_dim: int = STATE_DIM, action_dim: int = ACTION_DIM,
-                 learning_rate: float = AGENT_LR, gamma: float = GAMMA):
+                 learning_rate: float = AGENT_LR, gamma: float = GAMMA, hidden_sizes=None):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.learning_rate = learning_rate
         self.gamma = gamma
 
-        self.online_net = DQNNetwork(state_dim, action_dim)
-        self.target_net = DQNNetwork(state_dim, action_dim)
+        if hidden_sizes is None:
+            hidden_sizes = HIDDEN
+
+        self.online_net = DQNNetwork(state_dim, action_dim, hidden_sizes)
+        self.target_net = DQNNetwork(state_dim, action_dim, hidden_sizes)
         self.target_net.load_state_dict(self.online_net.state_dict())
 
         self.optimizer = optim.Adam(self.online_net.parameters(), lr=learning_rate)
@@ -95,6 +98,7 @@ class DQNAgent:
         self.epsilon = EPSILON_START
         self.epsilon_decay = EPSILON_DECAY
         self.steps = 0
+        self.bc_loss_history = []
 
     def select_action(self, state, training: bool = True) -> int:
         """Select action with epsilon-greedy policy."""
@@ -137,6 +141,7 @@ class DQNAgent:
                         batch_size: int = 32) -> float:
         """Pre-train with behavioral cloning."""
         optimizer = optim.Adam(self.online_net.parameters(), lr=0.001)
+        self.bc_loss_history = []
         final_loss = 0.0
 
         for epoch in range(epochs):
@@ -159,8 +164,11 @@ class DQNAgent:
                 n_batches += 1
 
             avg_loss = epoch_loss / max(n_batches, 1)
+            self.bc_loss_history.append(avg_loss)
             final_loss = avg_loss
 
+        # Sync target network after BC pre-training
+        self.target_net.load_state_dict(self.online_net.state_dict())
         return final_loss
 
     def save_weights(self, filepath: Path) -> None:
