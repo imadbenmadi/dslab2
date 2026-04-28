@@ -14,18 +14,35 @@ from .constants import (
 class SchedulingProblem:
     """Multi-objective optimization problem for task scheduling."""
 
-    def __init__(self):
-        self.n_pebble_steps = 3  # Steps 2, 3, 5
+    def __init__(self, state_vector: np.ndarray = None):
+        self.state_vector = state_vector
+        self.n_pebble_steps = 1 if state_vector is not None else 3  # Steps 2, 3, 5
         self.n_objectives = 2  # latency, energy
 
     def evaluate(self, assignment: np.ndarray) -> np.ndarray:
         """
         Evaluate scheduling assignment.
-        assignment: array of [peb2_dest, peb3_dest, peb5_dest]
-                   where each value is 0-3 (fog A-D) or 4 (cloud)
         Returns: [total_latency_ms, total_energy_j]
         """
         from .formulas import step_latency, step_energy, classify_step
+
+        if self.state_vector is not None:
+            dest_idx = int(assignment[0])
+            ec = self.state_vector[8]      # exec_cost_norm
+            t_exit = self.state_vector[10] # t_exit_norm
+            
+            if dest_idx == 4:
+                lat = 80.0 + (ec * 150.0) 
+                eng = 0.5 + (ec * 0.8)
+            else:
+                fog_load = self.state_vector[dest_idx]
+                fog_queue = self.state_vector[dest_idx + 4]
+                lat = 10.0 + (ec * 50.0) / max(0.01, 1.0 - fog_load) + (fog_queue * 15.0)
+                eng = 0.1 + (ec * 0.3)
+                if t_exit < 0.2:
+                    lat += 300.0  
+                    eng += 1.5
+            return np.array([lat, eng])
 
         # Simulate task execution
         total_latency = 0.0
@@ -78,7 +95,7 @@ class NSGAIIOptimizer:
         Returns: (pareto_front_objectives, pareto_solutions)
         """
         # Initialize population
-        pop = np.random.randint(0, 5, (self.pop_size, 3)).astype(float)
+        pop = np.random.randint(0, 5, (self.pop_size, self.problem.n_pebble_steps)).astype(float)
         fitness = np.array([self.problem.evaluate(ind) for ind in pop])
 
         for gen in range(self.n_gen):
@@ -135,7 +152,7 @@ class NSGAIIOptimizer:
 
             # Binomial crossover with CR
             trial = pop[i].copy()
-            for j in range(len(pop[i])):
+            for j in range(self.problem.n_pebble_steps):
                 if np.random.random() < MMDE_CR:
                     trial[j] = mutant[j]
 
@@ -245,7 +262,7 @@ class MMDEOptimizer:
 
     def optimize(self) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Run MMDE optimization."""
-        pop = np.random.randint(0, 5, (self.pop_size, 3)).astype(float)
+        pop = np.random.randint(0, 5, (self.pop_size, self.problem.n_pebble_steps)).astype(float)
         fitness = np.array([self.problem.evaluate(ind) for ind in pop])
 
         for gen in range(self.n_gen):
@@ -256,7 +273,7 @@ class MMDEOptimizer:
 
                 # Crossover
                 trial = pop[i].copy()
-                for j in range(3):
+                for j in range(self.problem.n_pebble_steps):
                     if np.random.random() < self.CR:
                         trial[j] = mutant[j]
 

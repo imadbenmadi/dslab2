@@ -24,96 +24,10 @@ from pcnme import (
 from pcnme.progress import progress
 from pcnme.utilities import setup_logging, get_logger
 
-
-def generate_bc_dataset(n_batches: int = 1000, batch_size: int = 100, seed: int = 42, logger=None):
-    """
-    Generate behavioral cloning dataset from NSGA-II Pareto-optimal solutions.
-    
-    This uses NSGA-II to generate expert trajectories, ensuring the BC dataset
-    contains high-quality state-action pairs that the DQN can learn from.
-    
-    Args:
-        n_batches: number of batches to generate
-        batch_size: batch size per batch
-        seed: random seed
-        logger: optional logger instance
-    
-    Returns:
-        list of (state, action) tuples where actions are from Pareto-optimal solutions
-    """
-    if logger is None:
-        logger = logging.getLogger('PCNME.Pretrain')
-    
-    logger.info(f"Running NSGA-II optimization for expert trajectories...")
-    
-    # Initialize and run NSGA-II
-    optimizer = NSGAIIOptimizer()
-    optimizer.optimize()
-    
-    # Get Pareto-optimal solutions
-    pareto_solutions = np.asarray(optimizer.pareto_pop)
-
-    if len(pareto_solutions) == 0:
-        logger.warning("No Pareto solutions found, using random dataset")
-        pareto_solutions = np.random.randint(0, 5, (10, 3)).astype(float)
-    
-    logger.info(f"[OK] Extracted {len(pareto_solutions)} Pareto-optimal solutions")
-    
-    # Save raw NSGA-II Pareto solutions
-    nsga_path = Path(__file__).parent / 'results' / 'pretraining' / 'tof_nsga_solutions.csv'
-    if not nsga_path.parent.exists():
-        nsga_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    nsga_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(nsga_path, 'w', newline='') as f:
-        writer = csv.writer(f)
-        num_actions = pareto_solutions.shape[1] if pareto_solutions.ndim == 2 else 1
-        writer.writerow([f"action_step_{i+1}" for i in range(num_actions)])
-        for sol in pareto_solutions:
-            writer.writerow(sol if pareto_solutions.ndim == 2 else [sol])
-    logger.info(f"[OK] NSGA-II solutions saved to {nsga_path}")
-
-    logger.info(f"[OK] Generating BC dataset: {n_batches} batches x {batch_size} samples")
-    
-    dataset = []
-    rng = np.random.default_rng(seed)
-
-    batch_iter = progress(
-        range(n_batches),
-        desc="BC dataset",
-        unit="batch",
-        total=n_batches,
-    )
-
-    n_solutions = len(pareto_solutions)
-    n_vars = int(pareto_solutions.shape[1]) if pareto_solutions.ndim == 2 else 1
-
-    for batch_idx in batch_iter:
-        # Generate diverse states in [0,1]
-        states = rng.random((batch_size, STATE_DIM))
-
-        # Sample expert actions from Pareto front
-        expert_idxs = rng.integers(0, max(1, n_solutions), size=batch_size)
-        actions_raw = pareto_solutions[expert_idxs, 0] if n_vars > 0 else pareto_solutions[expert_idxs]
-        actions = (actions_raw.astype(int) % ACTION_DIM).tolist()
-
-        for i in range(batch_size):
-            dataset.append((states[i], int(actions[i])))
-    # save the dataset locally for inspection
-    dataset_path = Path(__file__).parent / 'dataset'  / 'gen_dataset.csv'
-    if not dataset_path.parent.exists():
-        dataset_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    with open(dataset_path, 'w', newline='') as f:
-        writer = csv.writer(f)
-        header = [f"state_{i+1}" for i in range(STATE_DIM)] + ["action"]
-        writer.writerow(header)
-        for state, action in dataset:
-            writer.writerow(list(state) + [action])
-    logger.info(f"[OK] BC dataset generated and saved to {dataset_path}")
-    logger.info(f"[OK] Total dataset size: {len(dataset)} samples")
-    logger.debug(f"  State dimension: {STATE_DIM}, Action dimension: {ACTION_DIM}")
-    return dataset
+# Import dataset generation logic from utilities
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from utilities.data_gen import generate_bc_dataset
 
 
 def pretrain_dqn(dataset, output_dir: Path, epochs: int = 20, logger=None):
@@ -181,7 +95,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="PCNME Offline Pre-training"
     )
-    parser.add_argument('--batches', type=int, default=1000,
+    parser.add_argument('--batches', type=int, default=20,
                        help='Number of batches to generate')
     parser.add_argument('--output', type=Path, default=Path(__file__).parent / 'weights',
                        help='Output directory for weights')
@@ -197,9 +111,9 @@ def main():
     # Setup logging
     logger = setup_logging(args.output / 'logs', 'pretrain', args.log_level)
     
-    print("=" * 70)
-    print("PCNME OFFLINE PRE-TRAINING")
-    print("=" * 70)
+    print("\n" + "🚀 " * 20)
+    print("    PCNME OFFLINE PRE-TRAINING (REAL NSGA-II MATH)")
+    print("🚀 " * 20 + "\n")
     logger.info("=" * 70)
     logger.info("PCNME OFFLINE PRE-TRAINING")
     logger.info("=" * 70)

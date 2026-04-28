@@ -4,8 +4,15 @@ Generates realistic mobility patterns and task workloads.
 """
 
 import numpy as np
+import csv
+import logging
 from typing import Dict, List, Tuple, Optional
 from pathlib import Path
+
+from pcnme.optimization import NSGAIIOptimizer, SchedulingProblem
+from pcnme import STATE_DIM, ACTION_DIM
+from pcnme.progress import progress
+from tqdm import tqdm
 
 
 class MobilityGenerator:
@@ -231,3 +238,80 @@ class RealisticDatasetGenerator:
             dataset[scenario] = self.generate_scenario(scenario, n_vehicles=50, duration_s=1800)
         
         return dataset
+
+
+def generate_bc_dataset(n_batches: int = 20, batch_size: int = 100, seed: int = 42, logger=None):
+    """
+    Generate behavioral cloning dataset from REAL NSGA-II Pareto-optimal solutions.
+    Default size: 2,000 highly optimized state-action pairs.
+    """
+    if logger is None:
+        logger = logging.getLogger('PCNME.Pretrain')
+    
+    logger.info(f"Running NSGA-II optimization for expert trajectories...")
+    
+    optimizer = NSGAIIOptimizer()
+    optimizer.optimize()
+    
+    pareto_solutions = np.asarray(optimizer.pareto_pop)
+
+    if len(pareto_solutions) == 0:
+        logger.warning("No Pareto solutions found, using random dataset")
+        pareto_solutions = np.random.randint(0, 5, (10, 3)).astype(float)
+    
+    logger.info(f"[OK] Extracted {len(pareto_solutions)} Pareto-optimal solutions")
+    
+    # Calculate experiments dir dynamically from utilities folder
+    exp_dir = Path(__file__).parent.parent / 'experiments'
+    
+    nsga_path = exp_dir / 'results' / 'pretraining' / 'tof_nsga_solutions.csv'
+    nsga_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(nsga_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        num_actions = pareto_solutions.shape[1] if pareto_solutions.ndim == 2 else 1
+        writer.writerow([f"action_step_{i+1}" for i in range(num_actions)])
+        for sol in pareto_solutions:
+            writer.writerow(sol if pareto_solutions.ndim == 2 else [sol])
+    logger.info(f"[OK] NSGA-II solutions saved to {nsga_path}")
+
+    logger.info(f"[OK] Generating BC dataset: {n_batches} batches x {batch_size} samples")
+    
+    dataset = []
+    rng = np.random.default_rng(seed)
+
+    batch_iter = progress(range(n_batches), desc="BC dataset", unit="batch", total=n_batches)
+    
+    for batch_idx in batch_iter:
+        rhos = rng.uniform(0.20, 0.75, (batch_size, 4))
+        qs = rng.uniform(0.0, 1.0, (batch_size, 4))
+        mi_choices = np.array([200, 500, 800, 1000, 1200, 1500, 1800])
+        l_j = rng.choice(mi_choices, batch_size)
+        ec_norm = np.clip((l_j / 2000.0) / 1.0, 0, 1).reshape(-1, 1)
+        s_i = rng.normal(16.67, 4.17, batch_size)
+        s_norm = np.clip(s_i / 33.3, 0, 1).reshape(-1, 1)
+        t_exit_norm = rng.uniform(0.0, 1.0, (batch_size, 1))
+        states = np.hstack([rhos, qs, ec_norm, s_norm, t_exit_norm])
+
+        actions = []
+        # Cool progress bar for the real math optimization!
+        for i in tqdm(range(batch_size), desc=f"Optimizing Batch {batch_idx+1}/{n_batches}", leave=False):
+            prob = SchedulingProblem(state_vector=states[i])
+            real_optimizer = NSGAIIOptimizer(problem=prob, pop_size=20, n_gen=10)
+            real_optimizer.optimize()
+            _, best_chromosome = real_optimizer.get_knee_point()
+            actions.append(int(best_chromosome[0]))
+
+        for i in range(batch_size):
+            dataset.append((states[i], int(actions[i])))
+            
+    dataset_path = exp_dir / 'dataset' / 'gen_BC_dataset.csv'
+    dataset_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(dataset_path, 'w', newline='') as f:
+        writer = csv.writer(f)
+        header = ['fog_A_load', 'fog_B_load', 'fog_C_load', 'fog_D_load', 'fog_A_queue', 'fog_B_queue', 'fog_C_queue', 'fog_D_queue', 'exec_cost_norm', 'speed_norm', 't_exit_norm', 'action']
+        writer.writerow(header)
+        for state, action in dataset:
+            writer.writerow(list(state) + [action])
+    logger.info(f"[OK] Total dataset size: {len(dataset)} samples")
+    return dataset

@@ -16,3 +16,5 @@ results_*/
 *.log
 .run
 weights
+weights/*
+*.pt
