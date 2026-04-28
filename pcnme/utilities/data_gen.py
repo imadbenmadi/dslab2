@@ -5,6 +5,7 @@ Generates realistic mobility patterns and task workloads.
 
 import numpy as np
 import csv
+import os
 import logging
 from typing import Dict, List, Tuple, Optional
 from pathlib import Path
@@ -14,6 +15,12 @@ from pcnme import STATE_DIM, ACTION_DIM
 from pcnme.progress import progress
 from tqdm import tqdm
 
+try:
+    from dotenv import load_dotenv
+    # This automatically finds and loads the .env file from your root folder
+    load_dotenv()
+except ImportError:
+    pass
 
 class MobilityGenerator:
     """Generate realistic vehicle mobility patterns."""
@@ -248,35 +255,19 @@ def generate_bc_dataset(n_batches: int = 20, batch_size: int = 100, seed: int = 
     if logger is None:
         logger = logging.getLogger('PCNME.Pretrain')
     
-    logger.info(f"Running NSGA-II optimization for expert trajectories...")
-    
-    optimizer = NSGAIIOptimizer()
-    optimizer.optimize()
-    
-    pareto_solutions = np.asarray(optimizer.pareto_pop)
-
-    if len(pareto_solutions) == 0:
-        logger.warning("No Pareto solutions found, using random dataset")
-        pareto_solutions = np.random.randint(0, 5, (10, 3)).astype(float)
-    
-    logger.info(f"[OK] Extracted {len(pareto_solutions)} Pareto-optimal solutions")
-    
     # Calculate experiments dir dynamically from utilities folder
     exp_dir = Path(__file__).parent.parent / 'experiments'
     
-    nsga_path = exp_dir / 'results' / 'pretraining' / 'tof_nsga_solutions.csv'
-    nsga_path.parent.mkdir(parents=True, exist_ok=True)
-    with open(nsga_path, 'w', newline='') as f:
-        writer = csv.writer(f)
-        num_actions = pareto_solutions.shape[1] if pareto_solutions.ndim == 2 else 1
-        writer.writerow([f"action_step_{i+1}" for i in range(num_actions)])
-        for sol in pareto_solutions:
-            writer.writerow(sol if pareto_solutions.ndim == 2 else [sol])
-    logger.info(f"[OK] NSGA-II solutions saved to {nsga_path}")
+    # Load NSGA depth from environment variables, defaulting to 20 pop / 10 gens
+    pop_size = int(os.environ.get('PCNME_NSGA_POP', '20'))
+    n_gen = int(os.environ.get('PCNME_NSGA_GENS', '10'))
 
+    logger.info(f"Starting REAL NSGA-II optimization for expert trajectories...")
+    logger.info(f"NSGA-II Depth: pop_size={pop_size}, n_gen={n_gen} (set PCNME_NSGA_POP and PCNME_NSGA_GENS to change)")
     logger.info(f"[OK] Generating BC dataset: {n_batches} batches x {batch_size} samples")
     
     dataset = []
+    all_rows_for_csv = []
     rng = np.random.default_rng(seed)
 
     batch_iter = progress(range(n_batches), desc="BC dataset", unit="batch", total=n_batches)
@@ -293,25 +284,33 @@ def generate_bc_dataset(n_batches: int = 20, batch_size: int = 100, seed: int = 
         states = np.hstack([rhos, qs, ec_norm, s_norm, t_exit_norm])
 
         actions = []
+        optimal_latencies = []
+        optimal_energies = []
+        
         # Cool progress bar for the real math optimization!
         for i in tqdm(range(batch_size), desc=f"Optimizing Batch {batch_idx+1}/{n_batches}", leave=False):
             prob = SchedulingProblem(state_vector=states[i])
-            real_optimizer = NSGAIIOptimizer(problem=prob, pop_size=20, n_gen=10)
+            real_optimizer = NSGAIIOptimizer(problem=prob, pop_size=pop_size, n_gen=n_gen)
             real_optimizer.optimize()
-            _, best_chromosome = real_optimizer.get_knee_point()
+            knee_idx, best_chromosome = real_optimizer.get_knee_point()
+            best_fitness = real_optimizer.pareto_fitness[knee_idx]  # [latency, energy]
+            
             actions.append(int(best_chromosome[0]))
+            optimal_latencies.append(best_fitness[0])
+            optimal_energies.append(best_fitness[1])
 
         for i in range(batch_size):
             dataset.append((states[i], int(actions[i])))
+            all_rows_for_csv.append((states[i], int(actions[i]), optimal_latencies[i], optimal_energies[i]))
             
     dataset_path = exp_dir / 'dataset' / 'gen_BC_dataset.csv'
     dataset_path.parent.mkdir(parents=True, exist_ok=True)
     
     with open(dataset_path, 'w', newline='') as f:
         writer = csv.writer(f)
-        header = ['fog_A_load', 'fog_B_load', 'fog_C_load', 'fog_D_load', 'fog_A_queue', 'fog_B_queue', 'fog_C_queue', 'fog_D_queue', 'exec_cost_norm', 'speed_norm', 't_exit_norm', 'action']
+        header = ['fog_A_load', 'fog_B_load', 'fog_C_load', 'fog_D_load', 'fog_A_queue', 'fog_B_queue', 'fog_C_queue', 'fog_D_queue', 'exec_cost_norm', 'speed_norm', 't_exit_norm', 'action', 'nsga_latency_ms', 'nsga_energy_j']
         writer.writerow(header)
-        for state, action in dataset:
-            writer.writerow(list(state) + [action])
+        for state, action, lat, eng in all_rows_for_csv:
+            writer.writerow(list(state) + [action, lat, eng])
     logger.info(f"[OK] Total dataset size: {len(dataset)} samples")
     return dataset

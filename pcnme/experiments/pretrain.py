@@ -18,7 +18,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from pcnme import (
-    NSGAIIOptimizer, generate_bc_dataset_from_nsga2,
+    NSGAIIOptimizer,
     DQNAgent, STATE_DIM, ACTION_DIM, HIDDEN, BC_THRESHOLD
 )
 from pcnme.progress import progress
@@ -111,9 +111,7 @@ def main():
     # Setup logging
     logger = setup_logging(args.output / 'logs', 'pretrain', args.log_level)
     
-    print("\n" + "🚀 " * 20)
     print("    PCNME OFFLINE PRE-TRAINING (REAL NSGA-II MATH)")
-    print("🚀 " * 20 + "\n")
     logger.info("=" * 70)
     logger.info("PCNME OFFLINE PRE-TRAINING")
     logger.info("=" * 70)

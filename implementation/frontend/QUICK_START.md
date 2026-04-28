@@ -1,4 +1,4 @@
-# 🚀 QUICK START - UNIFIED SYSTEM
+# QUICK START - UNIFIED SYSTEM
 
 ## What Changed?
 
@@ -37,7 +37,7 @@ python app.py proposed
 Wait for output:
 
 ```
-🚀 API Server:       http://localhost:5000
+ API Server:       http://localhost:5000
 🔌 WebSocket:        ws://localhost:8765
 💻 Dashboard:        http://localhost:3000
 ```
@@ -217,6 +217,6 @@ Click "Export Results" or check `results/` folder for CSV files
 
 ---
 
-**That's it!** Run `app.py` (or START.bat) and watch your system learn in real-time! 🚀
+**That's it!** Run `app.py` (or START.bat) and watch your system learn in real-time!
 
 Questions? Check `explanation.md` for technical details.

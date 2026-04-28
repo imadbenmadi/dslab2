@@ -14,7 +14,7 @@ npm install
 npm start
 
 # Open http://localhost:3000 in browser
-# Watch the dashboard light up! 🚀
+# Watch the dashboard light up!
 ```
 
 ---
@@ -90,7 +90,7 @@ python main_server.py proposed
 ```
 ====== SMART CITY VEHICULAR TASK OFFLOADING SYSTEM ======
 
-🚀 API Server:       http://localhost:5000
+ API Server:       http://localhost:5000
 🔌 WebSocket:        ws://localhost:8765
 📊 Dashboard:        http://localhost:3000
 
@@ -258,7 +258,7 @@ Edit visualization/api_server.py:
 Edit frontend/src/components/Dashboard.jsx:
 
 ```javascript
-color = "text-blue-600"; // Change color
+color = 'text-blue-600'; // Change color
 ```
 
 ---
@@ -280,7 +280,7 @@ color = "text-blue-600"; // Change color
 ```bash
 # Make sure backend is running
 # Terminal 1 should show:
-# 🚀 API Server: http://localhost:5000
+#  API Server: http://localhost:5000
 
 # If not, run:
 python main_server.py proposed
@@ -399,7 +399,7 @@ http://YOUR_IP:3000
 
 ---
 
-## 🚀 Production Deployment
+## Production Deployment
 
 ### Docker (Recommended)
 

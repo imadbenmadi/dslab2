@@ -10,8 +10,8 @@ venv/
 .pytest_cache/
 
 # PCNME outputs
-results/
-results_*/
+# results/
+# results_*/
 *.logi
 *.log
 .run

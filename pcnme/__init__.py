@@ -66,7 +66,7 @@ from .dqn_agent import DQNNetwork, ReplayBuffer, DQNAgent
 # Multi-objective optimization
 from .optimization import (
     SchedulingProblem, NSGAIIOptimizer, MMDEOptimizer,
-    generate_bc_dataset_from_nsga2
+    # generate_bc_dataset_from_nsga2
 )
 
 # Results analysis
@@ -104,7 +104,7 @@ __all__ = [
     "DQNNetwork", "ReplayBuffer", "DQNAgent",
     # Optimization
     "SchedulingProblem", "NSGAIIOptimizer", "MMDEOptimizer",
-    "generate_bc_dataset_from_nsga2",
+    # "generate_bc_dataset_from_nsga2",
     # Analysis
     "ResultsAnalyzer",
     # Utilities

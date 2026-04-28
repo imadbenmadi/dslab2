@@ -64,7 +64,7 @@ docs/
 
 ---
 
-## 🚀 Quick Start (30 seconds)
+## Quick Start (30 seconds)
 
 ```bash
 # 1. Setup PostgreSQL
