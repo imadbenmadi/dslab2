@@ -153,6 +153,14 @@ class PCNMESimulator:
             results['handoff_success'] = np.random.rand() > 0.1  # 90% success
             results['handoff_mode'] = 'proactive' if t_exit_a < 5.0 else 'direct'
 
+        # Extract agent metrics if the current system uses a DQN agent
+        if hasattr(self.system, 'agent') and self.system.agent is not None:
+            results['agent_epsilon'] = getattr(self.system.agent, 'epsilon', None)
+            
+            # Grab the final BC loss if available
+            if hasattr(self.system.agent, 'bc_loss_history') and self.system.agent.bc_loss_history:
+                results['bc_loss_final'] = self.system.agent.bc_loss_history[-1]
+
         # Create record
         record = TaskRecord(**results)
         return record

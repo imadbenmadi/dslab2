@@ -8,6 +8,7 @@ import csv
 import os
 import sqlite3
 import logging
+from datetime import datetime
 from typing import Dict, List, Tuple, Optional
 from pathlib import Path
 
@@ -270,71 +271,96 @@ def generate_bc_dataset(n_batches: int = 20, batch_size: int = 100, seed: int = 
     rng = np.random.default_rng(seed)
 
     # Setup SQLite Database and CSV for low-memory streaming
+    # NOTE: CSV path can be overridden via env var PCNME_BC_CSV_PATH.
     db_path = exp_dir / 'dataset' / 'pretrain.db'
-    csv_path = exp_dir / 'dataset' / 'gen_BC_dataset.csv'
+    csv_path = Path(os.environ.get('PCNME_BC_CSV_PATH', str(exp_dir / 'dataset' / 'gen_BC_dataset.csv')))
     
     db_path.parent.mkdir(parents=True, exist_ok=True)
     
-    conn = sqlite3.connect(str(db_path))
-    cursor = conn.cursor()
-    cursor.execute("DROP TABLE IF EXISTS bc_dataset")
-    cursor.execute('''
-        CREATE TABLE bc_dataset (
-            s0 REAL, s1 REAL, s2 REAL, s3 REAL,
-            s4 REAL, s5 REAL, s6 REAL, s7 REAL,
-            s8 REAL, s9 REAL, s10 REAL,
-            action INTEGER,
-            nsga_latency_ms REAL,
-            nsga_energy_j REAL
-        )
-    ''')
-    
-    f_csv = open(csv_path, 'w', newline='')
-    writer = csv.writer(f_csv)
-    header = ['fog_A_load', 'fog_B_load', 'fog_C_load', 'fog_D_load', 'fog_A_queue', 'fog_B_queue', 'fog_C_queue', 'fog_D_queue', 'exec_cost_norm', 'speed_norm', 't_exit_norm', 'action', 'nsga_latency_ms', 'nsga_energy_j']
-    writer.writerow(header)
+    conn = None
+    f_csv = None
+    try:
+        conn = sqlite3.connect(str(db_path))
+        cursor = conn.cursor()
+        cursor.execute("DROP TABLE IF EXISTS bc_dataset")
+        cursor.execute('''
+            CREATE TABLE bc_dataset (
+                s0 REAL, s1 REAL, s2 REAL, s3 REAL,
+                s4 REAL, s5 REAL, s6 REAL, s7 REAL,
+                s8 REAL, s9 REAL, s10 REAL,
+                action INTEGER,
+                nsga_latency_ms REAL,
+                nsga_energy_j REAL
+            )
+        ''')
 
-    batch_iter = progress(range(n_batches), desc="BC dataset", unit="batch", total=n_batches)
-    
-    total_samples = 0
-    for batch_idx in batch_iter:
-        rhos = rng.uniform(0.20, 0.75, (batch_size, 4))
-        qs = rng.uniform(0.0, 1.0, (batch_size, 4))
-        mi_choices = np.array([200, 500, 800, 1000, 1200, 1500, 1800])
-        l_j = rng.choice(mi_choices, batch_size)
-        ec_norm = np.clip((l_j / 2000.0) / 1.0, 0, 1).reshape(-1, 1)
-        s_i = rng.normal(16.67, 4.17, batch_size)
-        s_norm = np.clip(s_i / 33.3, 0, 1).reshape(-1, 1)
-        t_exit_norm = rng.uniform(0.0, 1.0, (batch_size, 1))
-        states = np.hstack([rhos, qs, ec_norm, s_norm, t_exit_norm])
+        header = ['fog_A_load', 'fog_B_load', 'fog_C_load', 'fog_D_load', 'fog_A_queue', 'fog_B_queue', 'fog_C_queue', 'fog_D_queue', 'exec_cost_norm', 'speed_norm', 't_exit_norm', 'action', 'nsga_latency_ms', 'nsga_energy_j']
 
-        db_rows = []
-        csv_rows = []
-        
-        # Cool progress bar for the real math optimization!
-        for i in tqdm(range(batch_size), desc=f"Optimizing Batch {batch_idx+1}/{n_batches}", leave=False):
-            prob = SchedulingProblem(state_vector=states[i])
-            real_optimizer = NSGAIIOptimizer(problem=prob, pop_size=pop_size, n_gen=n_gen)
-            real_optimizer.optimize()
-            knee_idx, best_chromosome = real_optimizer.get_knee_point()
-            best_fitness = real_optimizer.pareto_fitness[knee_idx]  # [latency, energy]
-            
-            action = int(best_chromosome[0])
-            lat = float(best_fitness[0])
-            eng = float(best_fitness[1])
-            
-            row_data = list(states[i]) + [action, lat, eng]
-            db_rows.append(tuple(row_data))
-            csv_rows.append(row_data)
+        try:
+            f_csv = open(csv_path, 'w', newline='', encoding='utf-8')
+        except PermissionError:
+            # On Windows this usually means the file is locked (e.g., opened in Excel) or a sync tool is holding it.
+            ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+            fallback_path = csv_path.with_name(f"{csv_path.stem}_{ts}{csv_path.suffix}")
+            logger.warning(
+                "Permission denied opening CSV for writing: %s. "
+                "The file may be open/locked by another program (Excel) or OneDrive. "
+                "Writing to fallback: %s",
+                str(csv_path),
+                str(fallback_path),
+            )
+            f_csv = open(fallback_path, 'w', newline='', encoding='utf-8')
+            csv_path = fallback_path
 
-        # Stream safely to disk to prevent MemoryError
-        cursor.executemany("INSERT INTO bc_dataset VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", db_rows)
-        conn.commit()
-        writer.writerows(csv_rows)
-        total_samples += batch_size
-        
-    f_csv.close()
-    conn.close()
+        writer = csv.writer(f_csv)
+        writer.writerow(header)
+
+        batch_iter = progress(range(n_batches), desc="BC dataset", unit="batch", total=n_batches)
+
+        total_samples = 0
+        for batch_idx in batch_iter:
+            rhos = rng.uniform(0.20, 0.75, (batch_size, 4))
+            qs = rng.uniform(0.0, 1.0, (batch_size, 4))
+            mi_choices = np.array([200, 500, 800, 1000, 1200, 1500, 1800])
+            l_j = rng.choice(mi_choices, batch_size)
+            ec_norm = np.clip((l_j / 2000.0) / 1.0, 0, 1).reshape(-1, 1)
+            s_i = rng.normal(16.67, 4.17, batch_size)
+            s_norm = np.clip(s_i / 33.3, 0, 1).reshape(-1, 1)
+            t_exit_norm = rng.uniform(0.0, 1.0, (batch_size, 1))
+            states = np.hstack([rhos, qs, ec_norm, s_norm, t_exit_norm])
+
+            db_rows = []
+            csv_rows = []
+
+            # Cool progress bar for the real math optimization!
+            for i in tqdm(range(batch_size), desc=f"Optimizing Batch {batch_idx+1}/{n_batches}", leave=False):
+                prob = SchedulingProblem(state_vector=states[i])
+                real_optimizer = NSGAIIOptimizer(problem=prob, pop_size=pop_size, n_gen=n_gen)
+                real_optimizer.optimize()
+                knee_idx, best_chromosome = real_optimizer.get_knee_point()
+                best_fitness = real_optimizer.pareto_fitness[knee_idx]  # [latency, energy]
+
+                action = int(best_chromosome[0])
+                lat = float(best_fitness[0])
+                eng = float(best_fitness[1])
+
+                row_data = list(states[i]) + [action, lat, eng]
+                db_rows.append(tuple(row_data))
+                csv_rows.append(row_data)
+
+            # Stream safely to disk to prevent MemoryError
+            cursor.executemany("INSERT INTO bc_dataset VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", db_rows)
+            conn.commit()
+            writer.writerows(csv_rows)
+            total_samples += batch_size
+    finally:
+        try:
+            if f_csv is not None:
+                f_csv.close()
+        finally:
+            if conn is not None:
+                conn.close()
 
     logger.info(f"[OK] Total dataset size: {total_samples} samples")
+    logger.info(f"[OK] CSV dataset saved to: {csv_path}")
     return db_path
