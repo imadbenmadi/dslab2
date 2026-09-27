@@ -18,3 +18,5 @@ venv/
 weights
 weights/*
 *.pt
+# Runtime logs (implementation)
+code/implementation/results/logs/
