@@ -6,9 +6,8 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import Dict, Optional
 
-from .constants import FOG_NODES, EC_THRESHOLD, FOG_MIPS
-from .formulas import compute_ec, classify_step
-from .dqn_agent import DQNAgent, DQNNetwork
+from .formulas import classify_step
+from .dqn_agent import DQNAgent
 from .simulation import TaskExecutor, SimulationEnvironment
 
 
@@ -33,7 +32,6 @@ class BaseSystem(ABC, TaskExecutor):
     def _select_pebble_destination(self, vehicle_id: str, step_id: int,
                                    step_MI: int, sim_time_s: float) -> str:
         """Select fog node for pebble steps."""
-        pass
 
     def record_decision(self, vehicle_id: str, step_id: int, destination: str) -> None:
         """Record a scheduling decision."""

@@ -1,6 +1,5 @@
-import numpy as np
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 from config import DAG_STEPS, TOTAL_DEADLINE_MS
 
 # Real YOLOv5 latency data (milliseconds)

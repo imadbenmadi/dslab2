@@ -8,7 +8,6 @@ import csv
 import numpy as np
 from pathlib import Path
 
-from .constants import SEEDS
 
 
 @dataclass

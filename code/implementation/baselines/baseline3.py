@@ -15,9 +15,8 @@ Expected Performance:
 
 import sys
 import numpy as np
-from typing import List, Dict, Any, Tuple
+from typing import Dict, Any, Tuple
 from datetime import datetime
-from collections import defaultdict
 
 from config import (
     N_VEHICLES, SIM_DURATION_S, TASK_RATE_HZ, RANDOM_SEED,

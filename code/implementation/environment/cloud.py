@@ -4,7 +4,6 @@ Processes boulder-class tasks with realistic latencies and queue management
 """
 
 import simpy
-import numpy as np
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Callable
 from config import CLOUD_MIPS, WAN_LATENCY_MS

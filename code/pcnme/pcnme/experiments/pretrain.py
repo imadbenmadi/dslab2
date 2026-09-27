@@ -10,7 +10,6 @@ import argparse
 import numpy as np
 import csv
 import logging
-import torch
 from pathlib import Path
 import sys
 
@@ -18,11 +17,10 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from pcnme import (
-    NSGAIIOptimizer,
-    DQNAgent, STATE_DIM, ACTION_DIM, HIDDEN, BC_THRESHOLD
+    DQNAgent,
+    STATE_DIM, ACTION_DIM, HIDDEN
 )
-from pcnme.progress import progress
-from pcnme.utilities import setup_logging, get_logger
+from pcnme.utilities import setup_logging
 
 # Import dataset generation logic from utilities
 import sys
@@ -124,7 +122,7 @@ def main():
 
     # Pre-train DQN
     logger.info("Starting DQN pre-training...")
-    agent = pretrain_dqn(db_path, args.output, epochs=args.epochs, logger=logger)
+    pretrain_dqn(db_path, args.output, epochs=args.epochs, logger=logger)
 
     logger.info("=" * 70)
     logger.info("Pre-training complete!")

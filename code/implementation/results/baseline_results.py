@@ -5,7 +5,7 @@ Replaces hardcoded static values with actual metric data.
 
 import json
 import os
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 from datetime import datetime
 from threading import Lock
 

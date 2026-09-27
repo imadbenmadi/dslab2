@@ -16,10 +16,8 @@ Usage:
     python complete_system_setup.py
 """
 
-import os
 import sys
 import subprocess
-import time
 from pathlib import Path
 
 

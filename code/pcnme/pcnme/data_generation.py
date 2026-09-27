@@ -6,7 +6,7 @@ import numpy as np
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from .constants import SCENARIO_SPEEDS, SIM_DURATION_S, FOG_NODES
+from .constants import SCENARIO_SPEEDS, SIM_DURATION_S
 
 
 def synthetic_traces(scenario: str, n_vehicles: int = 50, seed: int = 42,

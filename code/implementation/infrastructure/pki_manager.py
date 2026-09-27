@@ -3,10 +3,8 @@ Enterprise PKI Management with Certificate Rotation, CRL, and OCSP.
 Provides full certificate lifecycle management for production deployment.
 """
 
-import os
 import json
 import time
-import hashlib
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -15,11 +13,10 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 
 from cryptography import x509
-from cryptography.x509.oid import NameOID, ExtensionOID
+from cryptography.x509.oid import NameOID
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.x509 import CertificateBuilder, CertificateSigningRequestBuilder
 
 
 class CertificateStatus(Enum):

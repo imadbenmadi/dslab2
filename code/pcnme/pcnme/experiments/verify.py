@@ -7,6 +7,7 @@ Usage:
 """
 
 import argparse
+import logging
 import numpy as np
 from pathlib import Path
 import sys
@@ -17,7 +18,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from pcnme import MetricsCollector
 from pcnme.formulas import compute_t_exit
 from pcnme.progress import progress
-from pcnme.utilities import setup_logging, get_logger
+from pcnme.utilities import setup_logging
 
 
 def verify_results(records, logger=None):
@@ -66,12 +67,12 @@ def verify_results(records, logger=None):
         if proposed_recs:
             proposed_feas = np.mean([r.deadline_met for r in proposed_recs])
 
-            for sys in ['random', 'greedy', 'nsga2_static']:
-                sys_recs = [r for r in records if r.system == sys]
+            for baseline in ['random', 'greedy', 'nsga2_static']:
+                sys_recs = [r for r in records if r.system == baseline]
                 if sys_recs:
                     sys_feas = np.mean([r.deadline_met for r in sys_recs])
                     assert proposed_feas >= sys_feas * 0.95, \
-                        f"Proposed ({proposed_feas:.3f}) should beat {sys} ({sys_feas:.3f})"
+                        f"Proposed ({proposed_feas:.3f}) should beat {baseline} ({sys_feas:.3f})"
 
             msg = f"[OK]  PASS: Proposed achieves {proposed_feas*100:.1f}% feasibility (better than baselines)"
             print(f"  {msg}")
@@ -95,12 +96,12 @@ def verify_results(records, logger=None):
         if proposed_recs:
             proposed_lat = np.mean([r.total_latency_ms for r in proposed_recs])
 
-            for sys in ['random', 'greedy', 'nsga2_static']:
-                sys_recs = [r for r in records if r.system == sys]
+            for baseline in ['random', 'greedy', 'nsga2_static']:
+                sys_recs = [r for r in records if r.system == baseline]
                 if sys_recs:
                     sys_lat = np.mean([r.total_latency_ms for r in sys_recs])
                     assert proposed_lat <= sys_lat * 1.05, \
-                        f"Proposed ({proposed_lat:.1f}ms) should beat {sys} ({sys_lat:.1f}ms)"
+                        f"Proposed ({proposed_lat:.1f}ms) should beat {baseline} ({sys_lat:.1f}ms)"
 
             msg = f"[OK]  PASS: Proposed achieves {proposed_lat:.1f}ms latency (better than baselines)"
             print(f"  {msg}")

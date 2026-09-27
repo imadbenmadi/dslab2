@@ -3,7 +3,6 @@ OpenFlow v1.3 Control Plane Integration.
 Manages real or simulated switches with flow rules, metrics, and dynamic routing.
 """
 
-import asyncio
 import json
 import time
 from typing import Dict, List, Optional, Tuple

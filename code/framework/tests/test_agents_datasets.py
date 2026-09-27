@@ -1,4 +1,3 @@
-import numpy as np
 
 from pcnme.agents.agent1 import build_agent1_bc_dataset
 from pcnme.agents.agent2 import build_agent2_bc_dataset, label_routing_action

@@ -16,12 +16,9 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from environment.vehicle import Vehicle
 from agents.agent1 import Agent1
 from infrastructure.mqtt_bus import MQTTServiceBus, MQTTEventBridge, MQTTQoS
-from infrastructure.mqtt_pki_integration import MQTTServiceProvisioner
 from infrastructure.pki_manager import PKIManager
 from framework.contracts import (
-    VehicleTaskSubmitted,
     VehicleTaskAck,
-    HandoffTriggered,
     TaskCompleted,
 )
 

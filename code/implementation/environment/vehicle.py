@@ -4,7 +4,7 @@ Uses real urban mobility patterns from Istanbul network
 """
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 from environment.task import generate_dag_task
 
 @dataclass

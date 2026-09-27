@@ -5,14 +5,13 @@ Ensures agent models are signed, versioned, and verified before execution.
 
 import json
 import hashlib
-import pickle
 from pathlib import Path
 from typing import Dict, Optional, Tuple
 from datetime import datetime
 from dataclasses import dataclass, asdict
 
 from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.backends import default_backend
 
 

@@ -18,10 +18,6 @@ from environment.fog_node import FogNode
 from agents.agent2 import Agent2
 from infrastructure.mqtt_bus import MQTTServiceBus, MQTTEventBridge, MQTTQoS
 from infrastructure.pki_manager import PKIManager
-from framework.contracts import (
-    FogDecisionMade,
-    HandoffTriggered,
-)
 
 
 class FogServiceMQTT:

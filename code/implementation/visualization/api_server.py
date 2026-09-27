@@ -9,11 +9,11 @@ from datetime import datetime
 import threading
 import os
 import numpy as np
-from typing import Dict, List, Any
+from typing import Dict, Any
 from collections import deque
 from storage.data_store import get_data_store
 from results.baseline_results import get_baseline_tracker
-from .websocket_server import get_ws_server, SystemMetrics
+from .websocket_server import get_ws_server
 
 
 app = Flask(__name__, static_folder='../frontend/build', static_url_path='')

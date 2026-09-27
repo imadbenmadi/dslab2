@@ -4,10 +4,7 @@ Setup verification and quick-start helper for distributed services.
 Run: python check_setup.py
 """
 
-import subprocess
 import sys
-import os
-import json
 from pathlib import Path
 from importlib.util import find_spec
 

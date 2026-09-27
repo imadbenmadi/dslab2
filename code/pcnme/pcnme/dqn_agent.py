@@ -9,7 +9,7 @@ import numpy as np
 import sqlite3
 import warnings
 from pathlib import Path
-from typing import Tuple, List
+from typing import List
 
 from .constants import (
     STATE_DIM, ACTION_DIM, HIDDEN, AGENT_LR, GAMMA,

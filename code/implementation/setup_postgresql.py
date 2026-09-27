@@ -11,9 +11,7 @@ Usage:
     python setup_postgresql.py
 """
 
-import os
 import sys
-import time
 from pathlib import Path
 
 def check_postgresql_installed():
@@ -67,7 +65,7 @@ def test_raw_connection(host="localhost", port=5432, user="postgres"):
 def create_database_and_tables(host="localhost", port=5432, user="postgres", password="postgres"):
     """Create smart_city database and tables."""
     import psycopg2
-    from psycopg2 import sql, Error
+    from psycopg2 import Error
     
     print(f"\nCreating database and tables...")
     

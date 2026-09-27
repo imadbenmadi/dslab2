@@ -3,7 +3,6 @@
 Quick System Verification Test
 Checks all components are working
 """
-import sys
 import os
 
 print("=" * 80)

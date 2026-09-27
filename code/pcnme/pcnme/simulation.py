@@ -2,14 +2,13 @@
 Simulation engine: FogNode, Vehicle, SimulationEnvironment.
 """
 
-import numpy as np
 from collections import deque
 from typing import Dict, Optional, Tuple
 
 from .constants import FOG_NODES, FOG_RADIUS
 from .formulas import (
     t_exec_fog, t_exec_cloud, t_tx_fog, t_tx_cloud,
-    compute_t_exit, compute_ec, step_energy
+    compute_t_exit, step_energy
 )
 
 

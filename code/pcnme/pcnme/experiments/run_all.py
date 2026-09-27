@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+import logging
 import numpy as np
 from pathlib import Path
 from datetime import datetime
@@ -22,11 +23,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from pcnme import (
     TaskRecord, MetricsCollector,
     DataManager, SimulationEnvironment, create_system,
-    DQNAgent, SEEDS, SCENARIO_SPEEDS,
-    N_VEHICLES, SIM_DURATION_S, WARMUP_S, DAG, TOTAL_DEADLINE_MS
+    DQNAgent, SEEDS, N_VEHICLES,
+    SIM_DURATION_S, WARMUP_S, DAG, TOTAL_DEADLINE_MS
 )
 from pcnme.progress import progress
-from pcnme.utilities import setup_logging, get_logger
+from pcnme.utilities import setup_logging
 
 
 class PCNMESimulator:
@@ -298,7 +299,7 @@ def main():
         # Load DQN if needed
         dqn_agent = None
         if system_name in ['dqn_cold', 'dqn_bc_only', 'proposed']:
-            from pcnme import DQNAgent, STATE_DIM, ACTION_DIM, HIDDEN
+            from pcnme import STATE_DIM, ACTION_DIM, HIDDEN
             dqn_agent = DQNAgent(STATE_DIM, ACTION_DIM, HIDDEN)
 
             weights_file = args.weights / 'dqn_bc_pretrained.pt'

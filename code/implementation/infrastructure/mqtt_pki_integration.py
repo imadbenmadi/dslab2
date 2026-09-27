@@ -3,7 +3,6 @@ MQTT + PKI Integration Layer.
 Manages certificate provisioning and renewal for MQTT services with mTLS.
 """
 
-import os
 from pathlib import Path
 from typing import Tuple, Optional
 import threading

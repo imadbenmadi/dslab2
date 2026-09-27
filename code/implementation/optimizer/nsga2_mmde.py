@@ -6,7 +6,7 @@ from pymoo.optimize import minimize
 from pymoo.termination import get_termination
 from pymoo.core.mutation import Mutation
 from config import (NSGA_POP_SIZE, NSGA_GENS, MMDE_F, MMDE_CR,
-                    FOG_MIPS, FOG_NODES, WAN_LATENCY_MS)
+                    FOG_MIPS)
 
 class TaskOffloadingProblem(Problem):
     """Multi-objective optimization problem for task routing."""

@@ -8,14 +8,11 @@ Run: python -m services.cloud_service
 import asyncio
 import threading
 import time
-import json
-from typing import Dict, Optional
+from typing import Dict
 from dataclasses import dataclass
 
-from flask import Flask
 from flask_cors import CORS
 from infrastructure.nats_bus import NatsServiceBus, NatsEventBridge, NatsMessage
-from infrastructure.cert_manager import get_mtls_config
 from visualization.websocket_server import WebSocketServer
 from visualization.api_server import app as api_app
 

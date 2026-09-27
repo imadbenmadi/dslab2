@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import Dict, List
 
-from .metrics import TaskRecord, MetricsCollector, SystemSummary
+from .metrics import TaskRecord
 from .formulas import bootstrap_ci, wilcoxon_test
 from .constants import SYSTEMS
 

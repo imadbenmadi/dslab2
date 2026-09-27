@@ -8,7 +8,6 @@ Run: python -m services.cloud_service_mqtt
 import asyncio
 import os
 import sys
-import json
 from pathlib import Path
 from collections import defaultdict
 

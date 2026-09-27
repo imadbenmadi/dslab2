@@ -1,9 +1,7 @@
 """Plotting and visualization functions for results analysis."""
 
 import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
-from typing import Dict, List, Any
+from typing import Dict, Any
 
 
 def plot_all(results: Dict[str, Any]):

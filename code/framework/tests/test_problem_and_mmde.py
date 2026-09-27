@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 
 from pcnme.core.config import Settings
 from pcnme.core.topology import CloudNode, FogNode, Position, Topology

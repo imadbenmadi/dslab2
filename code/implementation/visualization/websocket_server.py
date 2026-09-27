@@ -6,7 +6,7 @@ Streams live metrics from SimPy simulation to connected clients
 import asyncio
 import json
 import threading
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Set, Optional, Dict, Any
 import websockets
 from datetime import datetime

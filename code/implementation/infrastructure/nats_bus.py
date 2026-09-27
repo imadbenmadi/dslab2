@@ -8,7 +8,6 @@ import json
 import uuid
 from dataclasses import dataclass, asdict
 from typing import Dict, Any, Callable, Optional, List
-from pathlib import Path
 
 import nats
 from infrastructure.cert_manager import get_mtls_config

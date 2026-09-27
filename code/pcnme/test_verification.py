@@ -79,8 +79,8 @@ t_exit = formulas.compute_t_exit(
     speed_ms=19.4, heading_deg=0,   # Moving EAST (away from fog)
     fog_x=200, fog_y=500, fog_radius=250
 )
-print(f"  Vehicle at (260, 500), moving EAST at 19.4 m/s")
-print(f"  Fog A at (200, 500), radius=250m")
+print("  Vehicle at (260, 500), moving EAST at 19.4 m/s")
+print("  Fog A at (200, 500), radius=250m")
 print(f"  T_exit = {t_exit:.2f} seconds (vehicle exiting)")
 assert t_exit > 0 and t_exit < 30  # Vehicle moving away should have reasonable T_exit
 print("  [OK]  Valid T_exit computation for moving vehicle")

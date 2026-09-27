@@ -10,7 +10,7 @@ import json
 import uuid
 import time
 import ssl
-from typing import Dict, Any, Callable, Optional, List
+from typing import Dict, Any, Callable, Optional
 from pathlib import Path
 from dataclasses import dataclass, asdict
 from enum import Enum
@@ -321,7 +321,6 @@ class MQTTServiceBus:
 
     def _on_publish(self, client, userdata, mid):
         """Called when publish completes."""
-        pass
 
     def _on_subscribe(self, client, userdata, mid, granted_qos):
         """Called when subscribe completes."""

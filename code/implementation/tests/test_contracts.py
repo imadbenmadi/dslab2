@@ -1,6 +1,6 @@
 import unittest
 
-from framework.contracts import make_envelope, validate_envelope, CONTRACT_VERSION
+from framework.contracts import make_envelope, validate_envelope
 
 
 class ContractsTest(unittest.TestCase):

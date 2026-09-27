@@ -3,7 +3,6 @@ mTLS Certificate Generation and Management for Distributed Services.
 Supports service-level mTLS with role-based authorization.
 """
 
-import os
 import json
 from pathlib import Path
 from datetime import datetime, timedelta

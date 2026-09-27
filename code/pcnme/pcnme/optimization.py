@@ -6,8 +6,7 @@ import numpy as np
 from typing import Tuple, List
 
 from .constants import (
-    NSGA_POP, NSGA_GENS, MMDE_F, MMDE_CR, N_OFFLINE_BATCHES,
-    DAG, FOG_NODES, STATE_DIM, ACTION_DIM
+    NSGA_POP, NSGA_GENS, MMDE_F, MMDE_CR, DAG
 )
 
 

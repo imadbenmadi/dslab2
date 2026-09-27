@@ -9,11 +9,10 @@ import os
 import sqlite3
 import logging
 from datetime import datetime
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Optional
 from pathlib import Path
 
 from pcnme.optimization import NSGAIIOptimizer, SchedulingProblem
-from pcnme import STATE_DIM, ACTION_DIM
 from pcnme.progress import progress
 from tqdm import tqdm
 
@@ -264,7 +263,7 @@ def generate_bc_dataset(n_batches: int = 20, batch_size: int = 100, seed: int = 
     pop_size = int(os.environ.get('PCNME_NSGA_POP', '20'))
     n_gen = int(os.environ.get('PCNME_NSGA_GENS', '10'))
 
-    logger.info(f"Starting REAL NSGA-II optimization for expert trajectories...")
+    logger.info("Starting REAL NSGA-II optimization for expert trajectories...")
     logger.info(f"NSGA-II Depth: pop_size={pop_size}, n_gen={n_gen} (set PCNME_NSGA_POP and PCNME_NSGA_GENS to change)")
     logger.info(f"[OK] Generating BC dataset: {n_batches} batches x {batch_size} samples")
     

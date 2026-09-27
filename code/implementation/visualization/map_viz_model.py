@@ -3,9 +3,8 @@ Enhanced Real-Time Map Visualization with Coverage Zones and Task Flows
 Shows fog coverage areas, vehicle positions, connections, and task offloading
 """
 
-import numpy as np
 from typing import Dict, List, Tuple, Any
-from config import FOG_NODES, FOG_COVERAGE_RADIUS, N_VEHICLES
+from config import FOG_NODES, FOG_COVERAGE_RADIUS
 
 
 class MapVisualizationModel:

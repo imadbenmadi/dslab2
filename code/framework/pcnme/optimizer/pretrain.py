@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import numpy as np
 
@@ -12,7 +12,7 @@ from pcnme.core.topology import Topology
 from pcnme.datasets.synthetic import SyntheticGenerator
 from pcnme.optimizer.nsga2_mmde import run_nsga2_mmde
 from pcnme.optimizer.pareto import KneePoint, select_knee_point
-from pcnme.optimizer.problem import OffloadingUnit, TaskOffloadingProblem
+from pcnme.optimizer.problem import TaskOffloadingProblem
 
 
 @dataclass(frozen=True)

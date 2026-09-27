@@ -6,26 +6,21 @@ Run: python -m services.vehicle_service
 """
 
 import asyncio
-import sys
 import time
 import numpy as np
-from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List
 from dataclasses import dataclass
 
 from config import (
     N_VEHICLES, VEHICLE_SPEED_MEAN, VEHICLE_SPEED_STD,
-    TASK_RATE_HZ, FOG_COVERAGE_RADIUS, N_VEHICLES, RANDOM_SEED,
-    SIM_DURATION_S, WARMUP_S
+    TASK_RATE_HZ, N_VEHICLES, RANDOM_SEED, SIM_DURATION_S,
+    WARMUP_S
 )
 from agents.agent1 import Agent1
 from broker.tof_roles import TofLiteVehicleBroker
 from environment.task import generate_dag_task
-from framework.contracts import VehicleTaskSubmitted, make_envelope
 from infrastructure.nats_bus import NatsServiceBus, NatsEventBridge
-from infrastructure.cert_manager import get_mtls_config
 from datasets import TrajectoryGenerator
-import csv
 
 
 @dataclass

@@ -4,7 +4,6 @@ Professional visualizations for system monitoring
 """
 
 import plotly.graph_objects as go
-import plotly.express as px
 import pandas as pd
 import numpy as np
 from config import FOG_NODES, FOG_COVERAGE_RADIUS

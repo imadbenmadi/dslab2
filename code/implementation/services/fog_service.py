@@ -13,12 +13,11 @@ from dataclasses import dataclass
 
 from config import (
     FOG_NODES, FOG_MIPS, FOG_COVERAGE_RADIUS, EC_THRESHOLD,
-    SIM_DURATION_S, WARMUP_S, RANDOM_SEED
+    RANDOM_SEED
 )
 from agents.agent2 import Agent2
 from broker.tof_roles import TofFogBroker
 from sdn.controller import SDNController
-from framework.contracts import FogDecisionMade, CloudForwarded, make_envelope
 from infrastructure.nats_bus import NatsServiceBus, NatsEventBridge, NatsMessage
 from results.logging_utils import setup_application_logger
 

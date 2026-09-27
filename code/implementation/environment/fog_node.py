@@ -4,7 +4,6 @@ Processes pebble-class tasks with queue management and handoff support
 """
 
 import simpy
-import numpy as np
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Callable
 from config import FOG_MIPS, BANDWIDTH_MBPS

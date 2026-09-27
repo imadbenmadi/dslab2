@@ -5,7 +5,6 @@ Every formula is taken verbatim from the paper sections.
 
 import math
 import numpy as np
-import torch
 import torch.nn.functional as F
 from scipy import stats
 
@@ -14,7 +13,7 @@ from .constants import (
     BANDWIDTH_MBPS, FOG_CLOUD_BW_MBPS, G5_LATENCY_MS, WAN_LATENCY_MS,
     P_TX, KAPPA, ALPHA, E_REF,
     OMEGA_L, OMEGA_E, OMEGA_V, LAMBDA_CRIT,
-    DAG, STATE_DIM, T_EXIT_MAX, SPEED_MAX_MS
+    T_EXIT_MAX, SPEED_MAX_MS
 )
 
 

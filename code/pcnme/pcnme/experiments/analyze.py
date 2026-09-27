@@ -19,7 +19,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from pcnme import MetricsCollector, ResultsAnalyzer
 from pcnme.progress import progress
-from pcnme.utilities import setup_logging, get_logger
+from pcnme.utilities import setup_logging
 
 
 def main():
