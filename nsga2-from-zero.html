@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NSGA-II from zero: a step-by-step lesson</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F2F4F6;
+  --panel: #FFFFFF;
+  --ink: #17202B;
+  --muted: #5B6675;
+  --line: #D5DAE0;
+  --soft: #E8ECF0;
+  --f1: #0E8C7F;
+  --f2: #C98A12;
+  --f3: #7056C4;
+  --rest: #A9B1BB;
+  --bad: #C2413A;
+  --good: #2F8F4E;
+  --nA: #3B7DD8;
+  --nB: #D1603D;
+  --nC: #7C8794;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12171D; --panel: #1A2129; --ink: #E7ECF1; --muted: #9AA6B2; --line: #2A333D; --soft: #222B34;
+    --f1: #3CC2B1; --f2: #E3A93A; --f3: #9C86E6; --rest: #56606B; --bad: #E0645C; --good: #5CC27E;
+    --nA: #6BA3F0; --nB: #E8845F; --nC: #9AA6B2;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12171D; --panel: #1A2129; --ink: #E7ECF1; --muted: #9AA6B2; --line: #2A333D; --soft: #222B34;
+  --f1: #3CC2B1; --f2: #E3A93A; --f3: #9C86E6; --rest: #56606B; --bad: #E0645C; --good: #5CC27E;
+  --nA: #6BA3F0; --nB: #E8845F; --nC: #9AA6B2;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  -webkit-text-size-adjust: 100%;
+}
+.shell { max-width: 900px; margin: 0 auto; padding: 1.5rem 1.25rem 3rem; }
+.topbar { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1rem; }
+.topbar h1 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 0; }
+.counter { font-family: var(--display); color: var(--muted); font-size: 0.95rem; }
+.progress { display: flex; gap: 4px; margin: 0.9rem 0 1.5rem; }
+.progress button {
+  flex: 1; height: 8px; min-width: 0; padding: 0; border-radius: 4px;
+  border: none; background: var(--line); cursor: pointer;
+}
+.progress button.done { background: var(--rest); }
+.progress button.current { background: var(--f1); }
+.progress button:focus-visible { outline: 3px solid var(--f1); outline-offset: 2px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: clamp(1.1rem, 3vw, 2rem); }
+.card h2 { font-family: var(--display); font-size: clamp(1.45rem, 3.2vw, 2rem); line-height: 1.15; margin: 0 0 0.3rem; letter-spacing: -0.01em; }
+.where { font-family: var(--display); font-size: 0.9rem; color: var(--muted); margin: 0 0 1rem; }
+.card p { margin: 0.8rem 0; max-width: 68ch; }
+.card ul { max-width: 68ch; padding-left: 1.2rem; }
+.card li { margin: 0.35rem 0; }
+.nav { display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 1.25rem; }
+button.btn {
+  font-family: var(--display); font-size: 0.95rem; font-weight: 500;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 0.6rem 1.1rem; border-radius: 999px; cursor: pointer;
+}
+button.btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+button.btn:disabled { opacity: 0.4; cursor: default; }
+button.btn:focus-visible, .gene-btn:focus-visible { outline: 3px solid var(--f1); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.8rem 0; }
+.note { background: var(--soft); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; max-width: 68ch; }
+.math { font-family: var(--display); background: var(--soft); border-radius: 8px; padding: 0.55rem 0.9rem; margin: 0.5rem 0; display: block; max-width: 100%; overflow-x: auto; white-space: nowrap; }
+.table-wrap { overflow-x: auto; margin: 1rem 0; }
+table { border-collapse: collapse; font-size: 0.95rem; min-width: 100%; }
+th, td { padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+th { font-family: var(--display); font-weight: 500; color: var(--muted); font-size: 0.88rem; }
+td.num { font-family: var(--display); }
+td.hit { background: color-mix(in srgb, var(--f1) 18%, transparent); font-weight: 600; }
+td.yes { color: var(--good); font-family: var(--display); font-weight: 700; }
+td.dash { color: var(--rest); }
+tr.cut td { opacity: 0.4; text-decoration: line-through; }
+tr.keep td:first-child { box-shadow: inset 3px 0 0 var(--f1); }
+.genes { display: inline-flex; gap: 4px; vertical-align: middle; }
+.g {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 1.7rem; height: 1.7rem; border-radius: 5px;
+  color: #fff; font-family: var(--display); font-weight: 700; font-size: 0.85rem;
+}
+.gene-btn {
+  width: 3.2rem; height: 3.2rem; border-radius: 10px; border: none; cursor: pointer;
+  color: #fff; font-family: var(--display); font-weight: 700; font-size: 1.2rem;
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.05;
+}
+.gene-btn small { font-size: 0.62rem; font-weight: 500; opacity: 0.9; }
+.gene-btn.changed { box-shadow: 0 0 0 3px var(--ink); }
+.legend { display: flex; flex-wrap: wrap; gap: 0.9rem; font-family: var(--display); font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
+.legend i { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: -0.1rem; }
+canvas { display: block; width: 100%; margin: 0.8rem 0 0.2rem; }
+dl.gloss { display: grid; grid-template-columns: minmax(8rem, max-content) 1fr; gap: 0.5rem 1.2rem; margin: 1rem 0; max-width: 68ch; }
+dl.gloss dt { font-family: var(--display); font-weight: 700; }
+dl.gloss dd { margin: 0; }
+.verdict { font-family: var(--display); font-weight: 700; font-size: 1.1rem; margin: 0.7rem 0; }
+label.inline { font-family: var(--display); font-size: 0.95rem; color: var(--muted); }
+input[type="range"] { width: min(260px, 60vw); accent-color: var(--f1); }
+@media (max-width: 560px) {
+  dl.gloss { grid-template-columns: 1fr; gap: 0.1rem; }
+  dl.gloss dd { margin-bottom: 0.6rem; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <h1>NSGA-II from zero</h1>
+    <span class="counter" id="counter"></span>
+  </div>
+  <nav class="progress" id="progress" aria-label="Lesson steps"></nav>
+  <article class="card" id="card" aria-live="polite"></article>
+  <div class="nav">
+    <button class="btn" id="back">Back</button>
+    <button class="btn primary" id="next">Next</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ---------------- The worked example ----------------
+  // Four tasks, three destinations. Cost of each task on each destination: [energy J, delay ms].
+  const DEST = ["A", "B", "C"];
+  const DEST_NAME = { A: "Fog A", B: "Fog B", C: "Cloud" };
+  const DEST_VAR = { A: "--nA", B: "--nB", C: "--nC" };
+  const COST = {
+    A: [[3, 2], [4, 3], [2, 1], [5, 4]],
+    B: [[2, 4], [3, 5], [2, 3], [3, 6]],
+    C: [[1, 8], [1, 9], [1, 6], [2, 10]],
+  };
+  const TASKS = 4;
+
+  const evaluate = (genes) => {
+    let e = 0, d = 0;
+    [...genes].forEach((g, i) => { e += COST[g][i][0]; d += COST[g][i][1]; });
+    return { e, d };
+  };
+  const plan = (name, genes, kind) => ({ name, genes, kind, ...evaluate(genes) });
+
+  const PARENTS = [
+    plan("Plan 1", "AAAA", "parent"),
+    plan("Plan 2", "CCCC", "parent"),
+    plan("Plan 3", "BBBB", "parent"),
+    plan("Plan 4", "ACAC", "parent"),
+    plan("Plan 5", "CACA", "parent"),
+    plan("Plan 6", "BCBA", "parent"),
+  ];
+  const CHILDREN = [
+    plan("Child 1", "ABBB", "child"),
+    plan("Child 2", "BBAC", "child"),
+    plan("Child 3", "BBAB", "child"),
+    plan("Child 4", "AACC", "child"),
+    plan("Child 5", "BCAB", "child"),
+    plan("Child 6", "CBAA", "child"),
+  ];
+  const N = PARENTS.length;
+
+  const dominates = (a, b) => a.e <= b.e && a.d <= b.d && (a.e < b.e || a.d < b.d);
+
+  function sortFronts(items) {
+    const beats = items.map((p) => items.filter((q) => q !== p && dominates(p, q)));
+    const count = items.map((p) => items.filter((q) => q !== p && dominates(q, p)).length);
+    const fronts = [];
+    let current = items.filter((_, i) => count[i] === 0);
+    const left = [...count];
+    while (current.length) {
+      fronts.push(current);
+      const next = [];
+      for (const p of current) {
+        for (const q of beats[items.indexOf(p)]) {
+          const j = items.indexOf(q);
+          left[j]--;
+          if (left[j] === 0) next.push(q);
+        }
+      }
+      current = next;
+    }
+    return { fronts, beats, count };
+  }
+
+  function crowding(front) {
+    const result = new Map(front.map((p) => [p, { total: 0, parts: [] }]));
+    if (front.length <= 2) {
+      for (const p of front) result.get(p).total = Infinity;
+      return result;
+    }
+    for (const [key, label] of [["e", "energy"], ["d", "delay"]]) {
+      const sorted = [...front].sort((a, b) => a[key] - b[key]);
+      const lo = sorted[0][key], hi = sorted[sorted.length - 1][key];
+      result.get(sorted[0]).total = Infinity;
+      result.get(sorted[sorted.length - 1]).total = Infinity;
+      result.get(sorted[0]).parts.push(`${label}: end point, ∞`);
+      result.get(sorted[sorted.length - 1]).parts.push(`${label}: end point, ∞`);
+      for (let i = 1; i < sorted.length - 1; i++) {
+        const r = result.get(sorted[i]);
+        const val = (sorted[i + 1][key] - sorted[i - 1][key]) / (hi - lo);
+        r.parts.push(`${label}: (${sorted[i + 1][key]} − ${sorted[i - 1][key]}) ÷ (${hi} − ${lo}) = ${val.toFixed(2)}`);
+        if (Number.isFinite(r.total)) r.total += val;
+      }
+    }
+    return result;
+  }
+
+  const fmtCd = (v) => (Number.isFinite(v) ? v.toFixed(2) : "∞");
+
+  // ---------------- Small rendering helpers ----------------
+  const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  const genesHtml = (genes) =>
+    `<span class="genes" aria-label="${esc(genes)}">${[...genes]
+      .map((g) => `<span class="g" style="background:var(${DEST_VAR[g]})" title="${DEST_NAME[g]}">${g}</span>`)
+      .join("")}</span>`;
+
+  const legendHtml = () =>
+    `<div class="legend">${DEST.map((g) => `<span><i style="background:var(${DEST_VAR[g]})"></i>${g} = ${DEST_NAME[g]}</span>`).join("")}</div>`;
+
+  function costTableHtml(genes) {
+    const rows = Array.from({ length: TASKS }, (_, i) => {
+      const cells = DEST.map((g) => {
+        const [e, d] = COST[g][i];
+        const hit = genes && genes[i] === g ? " hit" : "";
+        return `<td class="num${hit}">${e} J, ${d} ms</td>`;
+      }).join("");
+      return `<tr><td>Task ${i + 1}</td>${cells}</tr>`;
+    }).join("");
+    return `<div class="table-wrap"><table><thead><tr><th></th>${DEST.map((g) => `<th>${DEST_NAME[g]}</th>`).join("")}</tr></thead><tbody>${rows}</tbody></table></div>`;
+  }
+
+  function planTableHtml(items, extraCols = [], rowClass = () => "") {
+    const head = `<tr><th>Plan</th><th>Chromosome</th><th>Energy f1</th><th>Delay f2</th>${extraCols.map((c) => `<th>${c.title}</th>`).join("")}</tr>`;
+    const body = items.map((p) =>
+      `<tr class="${rowClass(p)}"><td>${p.name}</td><td>${genesHtml(p.genes)}</td><td class="num">${p.e} J</td><td class="num">${p.d} ms</td>${extraCols.map((c) => `<td class="num">${c.value(p)}</td>`).join("")}</tr>`
+    ).join("");
+    return `<div class="table-wrap"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  const BOUNDS = { x0: 3, x1: 16, y0: 7, y1: 36 };
+  const FRONT_VARS = ["--f1", "--f2", "--f3"];
+  const frontColor = (r) => (r < FRONT_VARS.length ? cssVar(FRONT_VARS[r]) : cssVar("--rest"));
+
+  // opts: { rankOf(p) -> number|null, lines: [{points, color, dashed}], faded: Set }
+  function drawPlot(canvas, items, opts = {}) {
+    const width = canvas.parentElement.clientWidth;
+    const height = Math.round(Math.min(360, width * (width < 560 ? 0.8 : 0.5)));
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.height = height + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const pad = { l: 48, r: 16, t: 12, b: 40 };
+    const X = (v) => pad.l + ((v - BOUNDS.x0) / (BOUNDS.x1 - BOUNDS.x0)) * (width - pad.l - pad.r);
+    const Y = (v) => height - pad.b - ((v - BOUNDS.y0) / (BOUNDS.y1 - BOUNDS.y0)) * (height - pad.t - pad.b);
+
+    ctx.strokeStyle = cssVar("--line");
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, pad.t);
+    ctx.lineTo(pad.l, height - pad.b);
+    ctx.lineTo(width - pad.r, height - pad.b);
+    ctx.stroke();
+    ctx.fillStyle = cssVar("--muted");
+    ctx.font = "12px 'Bricolage Grotesque', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    for (let v = 4; v <= 16; v += 2) ctx.fillText(String(v), X(v), height - pad.b + 15);
+    ctx.fillText("Energy f1 (J), lower is better", pad.l + (width - pad.l - pad.r) / 2, height - 6);
+    ctx.textAlign = "right";
+    for (let v = 10; v <= 35; v += 5) ctx.fillText(String(v), pad.l - 6, Y(v) + 4);
+    ctx.save();
+    ctx.translate(13, pad.t + (height - pad.t - pad.b) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText("Delay f2 (ms), lower is better", 0, 0);
+    ctx.restore();
+
+    for (const line of opts.lines || []) {
+      const pts = [...line.points].sort((a, b) => a.e - b.e);
+      ctx.strokeStyle = line.color;
+      ctx.lineWidth = 2;
+      ctx.setLineDash(line.dashed ? [6, 5] : []);
+      ctx.beginPath();
+      pts.forEach((p, i) => (i ? ctx.lineTo(X(p.e), Y(p.d)) : ctx.moveTo(X(p.e), Y(p.d))));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    for (const p of items) {
+      const rank = opts.rankOf ? opts.rankOf(p) : null;
+      const color = rank == null ? cssVar("--ink") : frontColor(rank);
+      const x = X(p.e), y = Y(p.d);
+      ctx.globalAlpha = opts.faded && opts.faded.has(p) ? 0.25 : 1;
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      if (p.kind === "child") {
+        ctx.fillStyle = cssVar("--panel");
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = color;
+        ctx.fill();
+      }
+      ctx.fillStyle = cssVar("--ink");
+      ctx.font = "11px 'Bricolage Grotesque', system-ui, sans-serif";
+      ctx.textAlign = "left";
+      const short = p.kind === "child" ? "c" + p.name.split(" ")[1] : p.name.replace("Plan ", "P");
+      ctx.fillText(short, x + 8, y - 6);
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  const frontLegend = (n) =>
+    `<div class="legend">${Array.from({ length: n }, (_, r) => `<span><i style="background:var(${FRONT_VARS[r] || "--rest"})"></i>Front ${r + 1}</span>`).join("")}<span><i style="border:2px solid var(--muted)"></i>Hollow = child</span></div>`;
+
+  // Clickable chromosome: returns { get(), set() }
+  function geneEditor(container, initial, onChange) {
+    let genes = initial.split("");
+    const render = (changedIndex) => {
+      container.innerHTML = "";
+      genes.forEach((g, i) => {
+        const b = document.createElement("button");
+        b.className = "gene-btn" + (changedIndex === i ? " changed" : "");
+        b.style.background = cssVar(DEST_VAR[g]);
+        b.innerHTML = `${g}<small>task ${i + 1}</small>`;
+        b.setAttribute("aria-label", `Task ${i + 1} runs on ${DEST_NAME[g]}. Click to change.`);
+        b.addEventListener("click", () => {
+          genes[i] = DEST[(DEST.indexOf(g) + 1) % DEST.length];
+          render(i);
+          onChange(genes.join(""));
+          container.children[i].focus();
+        });
+        container.appendChild(b);
+      });
+    };
+    render();
+    return { get: () => genes.join("") };
+  }
+
+  // ---------------- Precomputed results used by several steps ----------------
+  const gen0 = sortFronts(PARENTS);
+  const rankIn = (sorted) => (p) => {
+    const r = sorted.fronts.findIndex((f) => f.includes(p));
+    return r === -1 ? null : r;
+  };
+  const gen0Rank = rankIn(gen0);
+  const gen0Crowd = crowding(gen0.fronts[0]);
+  const POOL = [...PARENTS, ...CHILDREN];
+  const merged = sortFronts(POOL);
+  const mergedRank = rankIn(merged);
+
+  const survivors = [];
+  let cutFront = null;
+  let cutCrowd = null;
+  for (const f of merged.fronts) {
+    if (survivors.length + f.length <= N) { survivors.push(...f); continue; }
+    cutFront = f;
+    cutCrowd = crowding(f);
+    const ranked = [...f].sort((a, b) => cutCrowd.get(b).total - cutCrowd.get(a).total);
+    survivors.push(...ranked.slice(0, N - survivors.length));
+    break;
+  }
+  const gen1 = sortFronts(survivors);
+
+  // ---------------- The lesson ----------------
+  const STEPS = [
+    {
+      title: "The problem we are solving",
+      where: "Start here",
+      html: () => `
+        <p>A car produces <strong>4 tasks</strong>. Each task can run in one of <strong>3 places</strong>:</p>
+        <ul>
+          <li><strong>Fog A</strong>: close and fast, but uses a lot of energy.</li>
+          <li><strong>Fog B</strong>: close, medium speed, medium energy.</li>
+          <li><strong>Cloud</strong>: far away, so slow, but cheap in energy.</li>
+        </ul>
+        <p>We must choose a place for <em>every</em> task. We want the <strong>total energy</strong> to be low <em>and</em> the <strong>total delay</strong> to be low. This table says what each task costs in each place:</p>
+        ${costTableHtml(null)}
+        <div class="note">In Paper 1 and in PCNME these numbers come from the energy and delay formulas you already read. Here I just give them to you, so we can focus on the algorithm alone.</div>
+        <p>NSGA-II is the method that finds good choices for this. We will run it by hand, on these exact numbers, one small step at a time.</p>`,
+    },
+    {
+      title: "The words and symbols",
+      where: "Vocabulary you will see in every paper",
+      html: () => `
+        <p>Most of the confusion around NSGA-II is vocabulary. Several words mean the same thing.</p>
+        <dl class="gloss">
+          <dt>Plan</dt><dd>One complete choice: a place for every task. Papers also call it a <strong>solution</strong>, an <strong>individual</strong> or a <strong>chromosome</strong>. Same thing.</dd>
+          <dt>Gene</dt><dd>One position in the chromosome: where <em>one</em> task goes. Our chromosomes have 4 genes.</dd>
+          <dt>Population</dt><dd>A group of plans we keep at the same time. Its size is <strong>N</strong>. We use N = 6.</dd>
+          <dt>Generation</dt><dd>One round of the algorithm: make children, keep the best N. Repeated many times.</dd>
+          <dt>f1, f2</dt><dd>The two <strong>objectives</strong>, the numbers we want low. f1 = total energy, f2 = total delay.</dd>
+          <dt>Front</dt><dd>A group of plans of equal quality. Front 1 is the best group.</dd>
+          <dt>Rank</dt><dd>The number of the front a plan is in. Lower is better.</dd>
+          <dt>Crowding distance</dt><dd>How much empty space is around a plan on its front. Bigger is better.</dd>
+          <dt>P<sub>t</sub></dt><dd>Paper 1's name for the parents at generation t.</dd>
+          <dt>O<sub>t</sub></dt><dd>The offspring, the children made from P<sub>t</sub>.</dd>
+          <dt>R<sub>t</sub> = P<sub>t</sub> ∪ O<sub>t</sub></dt><dd>Parents and children merged into one pool of 2N plans.</dd>
+          <dt>𝓕<sub>1</sub>, 𝓕<sub>2</sub>, …</dt><dd>Front 1, front 2, and so on.</dd>
+          <dt>n<sub>p</sub></dt><dd>How many plans beat plan p.</dd>
+          <dt>S<sub>p</sub></dt><dd>The list of plans that plan p beats.</dd>
+        </dl>
+        <p>Do not memorise this now. Every symbol will come back with real numbers.</p>`,
+    },
+    {
+      title: "Build one plan yourself",
+      where: "A chromosome and its two objectives",
+      html: () => `
+        <p>Click a gene to change where that task runs. The table highlights the cells you picked, and f1 and f2 are just the sums of those cells.</p>
+        <div class="row" id="editor"></div>
+        ${legendHtml()}
+        <div id="costs"></div>
+        <span class="math" id="sumE"></span>
+        <span class="math" id="sumD"></span>
+        <p>Try putting everything on the cloud, then everything on Fog A. One plan wins on energy, the other on delay. That fight is the whole reason NSGA-II exists.</p>`,
+      mount(root) {
+        const update = (genes) => {
+          const parts = [...genes].map((g, i) => COST[g][i]);
+          const { e, d } = evaluate(genes);
+          root.querySelector("#costs").innerHTML = costTableHtml(genes);
+          root.querySelector("#sumE").textContent = `f1 = energy = ${parts.map((p) => p[0]).join(" + ")} = ${e} J`;
+          root.querySelector("#sumD").textContent = `f2 = delay = ${parts.map((p) => p[1]).join(" + ")} = ${d} ms`;
+        };
+        geneEditor(root.querySelector("#editor"), "ACAC", update);
+        update("ACAC");
+      },
+    },
+    {
+      title: "Why not just try every plan?",
+      where: "Why we need a clever search at all",
+      html: () => `
+        <p>With 4 tasks and 3 places there are 3 × 3 × 3 × 3 = 81 plans. A computer checks those instantly. But the count is <strong>places<sup>tasks</sup></strong>, and it explodes. Move the sliders:</p>
+        <div class="row"><label class="inline" for="nT">Tasks: <b id="nTv"></b></label><input type="range" id="nT" min="4" max="100" value="4"></div>
+        <div class="row"><label class="inline" for="nK">Places: <b id="nKv"></b></label><input type="range" id="nK" min="2" max="10" value="3"></div>
+        <span class="math" id="count"></span>
+        <p id="time"></p>
+        <p>Paper 1 has up to 2,500 requests. PCNME has batches of 100 steps and 5 places. Trying everything is impossible, which is what "NP-hard" means in practice. NSGA-II instead keeps a small population and improves it, like breeding.</p>`,
+      mount(root) {
+        const t = root.querySelector("#nT"), k = root.querySelector("#nK");
+        const update = () => {
+          const n = +t.value, kk = +k.value;
+          root.querySelector("#nTv").textContent = n;
+          root.querySelector("#nKv").textContent = kk;
+          const log10 = n * Math.log10(kk);
+          const count = log10 < 15 ? Math.round(kk ** n).toLocaleString("en-US") : `about 10^${Math.floor(log10)}`;
+          root.querySelector("#count").textContent = `${kk}^${n} = ${count} plans`;
+          const secondsLog = log10 - 9;
+          const years = secondsLog - Math.log10(3.15e7);
+          root.querySelector("#time").textContent = secondsLog < 0
+            ? "At a billion checks per second: less than a second."
+            : years < 0
+              ? `At a billion checks per second: about ${Math.max(1, Math.round(10 ** secondsLog)).toLocaleString("en-US")} seconds.`
+              : `At a billion checks per second: about 10^${Math.floor(years)} years. The universe is about 10^10 years old.`;
+        };
+        t.addEventListener("input", update);
+        k.addEventListener("input", update);
+        update();
+      },
+    },
+    {
+      title: "Comparing two plans: dominance",
+      where: "The rule used to compare plans",
+      html: () => `
+        <p>With one objective, comparing is easy: smaller wins. With two, we use this rule:</p>
+        <span class="math">X dominates Y if X is not worse on f1, not worse on f2, and strictly better on at least one.</span>
+        <p>Build two plans and see the verdict.</p>
+        <p class="where">Plan X</p><div class="row" id="ex"></div>
+        <p class="where">Plan Y</p><div class="row" id="ey"></div>
+        <div class="verdict" id="verdict"></div>
+        <p id="why"></p>
+        <div class="note">Very often neither dominates: X is better on one goal, Y on the other. Then they are equally good in NSGA-II's eyes. That is why the answer is a group of plans and not one plan.</div>`,
+      mount(root) {
+        let gx = "AAAA", gy = "CCCC";
+        const update = () => {
+          const x = evaluate(gx), y = evaluate(gy);
+          const v = root.querySelector("#verdict"), why = root.querySelector("#why");
+          const line = `X: ${x.e} J, ${x.d} ms. Y: ${y.e} J, ${y.d} ms.`;
+          if (x.e === y.e && x.d === y.d) { v.textContent = "Equal on both goals."; v.style.color = cssVar("--muted"); why.textContent = line; }
+          else if (dominates(x, y)) { v.textContent = "X dominates Y."; v.style.color = cssVar("--good"); why.textContent = `${line} X is no worse on both and better on at least one.`; }
+          else if (dominates(y, x)) { v.textContent = "Y dominates X."; v.style.color = cssVar("--good"); why.textContent = `${line} Y is no worse on both and better on at least one.`; }
+          else { v.textContent = "Neither dominates: it is a trade-off."; v.style.color = cssVar("--f2"); why.textContent = `${line} Each one wins on a different goal.`; }
+        };
+        geneEditor(root.querySelector("#ex"), gx, (g) => { gx = g; update(); });
+        geneEditor(root.querySelector("#ey"), gy, (g) => { gy = g; update(); });
+        update();
+      },
+    },
+    {
+      title: "Generation 0: a random population",
+      where: "Start of the algorithm",
+      html: () => `
+        <p>NSGA-II starts with N random plans. We take N = 6. This group is P<sub>0</sub>, the parents of generation 0.</p>
+        ${planTableHtml(PARENTS)}
+        <canvas id="plot" role="img" aria-label="The six plans plotted by energy and delay"></canvas>
+        <p>Each dot is one plan. Down-left is good (little energy, little delay). Nothing is sorted yet. Next, we find out which plans are best.</p>`,
+      mount(root) { drawPlot(root.querySelector("#plot"), PARENTS); },
+    },
+    {
+      title: "Sorting, part 1: who beats whom",
+      where: "Paper 1, Algorithm 2, lines 1 to 9",
+      html: () => {
+        const head = `<tr><th>Does ↓ beat →</th>${PARENTS.map((q) => `<th>${q.name.replace("Plan ", "P")}</th>`).join("")}<th>S<sub>p</sub> (it beats)</th><th>n<sub>p</sub> (beaten by)</th></tr>`;
+        const rows = PARENTS.map((p, i) => {
+          const cells = PARENTS.map((q) => (p === q ? `<td class="dash">·</td>` : dominates(p, q) ? `<td class="yes">yes</td>` : `<td class="dash">no</td>`)).join("");
+          const sp = gen0.beats[i].map((q) => q.name.replace("Plan ", "P")).join(", ") || "nobody";
+          return `<tr><td>${p.name} (${p.e}, ${p.d})</td>${cells}<td>${sp}</td><td class="num">${gen0.count[i]}</td></tr>`;
+        }).join("");
+        return `
+          <p>For every pair of plans, we check the dominance rule once. Two things are recorded for each plan p:</p>
+          <ul>
+            <li><strong>S<sub>p</sub></strong>: the plans that p beats.</li>
+            <li><strong>n<sub>p</sub></strong>: how many plans beat p.</li>
+          </ul>
+          <div class="table-wrap"><table><thead>${head}</thead><tbody>${rows}</tbody></table></div>
+          <p>For example, Plan 3 (10 J, 18 ms) beats Plan 6 (10 J, 20 ms): same energy, less delay. And Plan 6 beats Plan 5. So Plan 5 is beaten by 2 plans: n = 2.</p>
+          <p>A plan with n<sub>p</sub> = 0 is beaten by nobody. Those plans form front 1.</p>`;
+      },
+    },
+    {
+      title: "Sorting, part 2: peeling the fronts",
+      where: "Paper 1, Algorithm 2, lines 10 to 27",
+      html: () => `
+        <p>Now the clever part. Take front 1 away. Every plan that front 1 was beating has one fewer plan beating it, so we subtract 1 from its n. Whoever reaches 0 forms the next front. Repeat.</p>
+        <div class="row"><button class="btn primary" id="go">Next round</button><button class="btn" id="again">Start over</button></div>
+        <p id="msg"></p>
+        <div id="tbl"></div>
+        <canvas id="plot" role="img" aria-label="Plans coloured by front as they are found"></canvas>
+        ${frontLegend(3)}`,
+      mount(root) {
+        const snaps = [];
+        const left = [...gen0.count];
+        const found = new Map();
+        snaps.push({ left: [...left], found: new Map(found), msg: "Starting counts. Nobody has a front yet." });
+        let current = PARENTS.filter((_, i) => left[i] === 0);
+        let r = 0;
+        while (current.length) {
+          current.forEach((p) => found.set(p, r));
+          snaps.push({ left: [...left], found: new Map(found), msg: `Front ${r + 1}: ${current.map((p) => p.name).join(", ")}. Their count is 0: nobody left beats them.` });
+          const changes = [];
+          const next = [];
+          for (const p of current) {
+            for (const q of gen0.beats[PARENTS.indexOf(p)]) {
+              const j = PARENTS.indexOf(q);
+              left[j]--;
+              changes.push(`${p.name} was beating ${q.name}, so ${q.name} goes to ${left[j]}`);
+              if (left[j] === 0) next.push(q);
+            }
+          }
+          if (changes.length) snaps.push({ left: [...left], found: new Map(found), msg: `Remove front ${r + 1}. ${changes.join(". ")}.` });
+          current = next;
+          r++;
+        }
+        snaps.push({ left: [...left], found: new Map(found), msg: `Done. Every plan has a rank. Front 1 is the best group we have so far.` });
+
+        let i = 0;
+        const render = () => {
+          const s = snaps[i];
+          root.querySelector("#msg").textContent = s.msg;
+          root.querySelector("#tbl").innerHTML = planTableHtml(PARENTS, [
+            { title: "n (still beaten by)", value: (p) => (s.found.has(p) ? "done" : s.left[PARENTS.indexOf(p)]) },
+            { title: "Front", value: (p) => (s.found.has(p) ? s.found.get(p) + 1 : "?") },
+          ]);
+          drawPlot(root.querySelector("#plot"), PARENTS, { rankOf: (p) => (s.found.has(p) ? s.found.get(p) : null) });
+          root.querySelector("#go").disabled = i === snaps.length - 1;
+        };
+        root.querySelector("#go").addEventListener("click", () => { i = Math.min(i + 1, snaps.length - 1); render(); });
+        root.querySelector("#again").addEventListener("click", () => { i = 0; render(); });
+        render();
+      },
+    },
+    {
+      title: "Crowding distance, by hand",
+      where: "Paper 1, Algorithm 3",
+      html: () => {
+        const f1 = gen0.fronts[0];
+        const rows = [...f1].sort((a, b) => a.e - b.e).map((p) => {
+          const c = gen0Crowd.get(p);
+          return `<tr><td>${p.name} (${p.e}, ${p.d})</td><td>${c.parts.join("<br>")}</td><td class="num"><b>${fmtCd(c.total)}</b></td></tr>`;
+        }).join("");
+        return `
+          <p>Plans in the same front are equally good by rank. To break ties, NSGA-II prefers plans that sit in empty space, so the front stays spread out instead of clumping in one corner.</p>
+          <p>For each goal, sort the front by that goal. The two end plans get <strong>∞</strong>: we never want to lose the extremes. For a middle plan, look at its two neighbours: distance = (next − previous) ÷ (max − min of the front). Add the result for energy and for delay.</p>
+          <p>Front 1 has Plan 2, Plan 4, Plan 3 and Plan 1. Energy goes from 5 to 14, delay from 10 to 33:</p>
+          <div class="table-wrap"><table><thead><tr><th>Plan</th><th>Calculation</th><th>Crowding distance</th></tr></thead><tbody>${rows}</tbody></table></div>
+          <p>Plan 4 has slightly more room around it than Plan 3, so if we had to drop one of them, Plan 3 would go first.</p>`;
+      },
+    },
+    {
+      title: "Choosing parents: the tournament",
+      where: "Selection. Paper 1 only mentions it; Deb 2002 defines it",
+      html: () => `
+        <p>To make children we need parents. NSGA-II picks them with a tiny contest:</p>
+        <ul>
+          <li>Pick 2 plans at random.</li>
+          <li>The one with the <strong>lower front</strong> wins.</li>
+          <li>Same front? The one with the <strong>larger crowding distance</strong> wins.</li>
+        </ul>
+        <p>Good plans win more often, but weak plans still get lucky sometimes, which keeps variety.</p>
+        <div class="row"><button class="btn primary" id="run">Run a tournament</button></div>
+        <div class="verdict" id="res"></div>
+        <p id="why">Press the button.</p>`,
+      mount(root) {
+        const cdOf = (p) => (gen0.fronts[0].includes(p) ? gen0Crowd.get(p).total : crowding(gen0.fronts[gen0Rank(p)]).get(p).total);
+        root.querySelector("#run").addEventListener("click", () => {
+          const a = PARENTS[Math.floor(Math.random() * N)];
+          let b = a;
+          while (b === a) b = PARENTS[Math.floor(Math.random() * N)];
+          const ra = gen0Rank(a), rb = gen0Rank(b);
+          let winner, reason;
+          if (ra !== rb) {
+            winner = ra < rb ? a : b;
+            reason = `${a.name} is in front ${ra + 1}, ${b.name} in front ${rb + 1}. Lower front wins.`;
+          } else {
+            const ca = cdOf(a), cb = cdOf(b);
+            winner = ca >= cb ? a : b;
+            reason = `Both are in front ${ra + 1}. Crowding: ${a.name} ${fmtCd(ca)}, ${b.name} ${fmtCd(cb)}. More space wins.`;
+          }
+          root.querySelector("#res").innerHTML = `${a.name} ${genesHtml(a.genes)} vs ${b.name} ${genesHtml(b.genes)}: ${winner.name} wins`;
+          root.querySelector("#why").textContent = reason;
+        });
+      },
+    },
+    {
+      title: "Crossover: mixing two parents",
+      where: "Paper 1, Algorithm 4",
+      html: () => {
+        const p4 = PARENTS[3], p3 = PARENTS[2];
+        const k1 = plan("Child", "ACBB", "child"), k2 = CHILDREN[1];
+        return `
+          <p>Say the tournaments picked <strong>Plan 4</strong> and <strong>Plan 3</strong>. Paper 1 cuts both chromosomes in the middle and swaps the halves:</p>
+          <p>Plan 4 ${genesHtml(p4.genes.slice(0, 2))} | ${genesHtml(p4.genes.slice(2))}</p>
+          <p>Plan 3 ${genesHtml(p3.genes.slice(0, 2))} | ${genesHtml(p3.genes.slice(2))}</p>
+          <p>Child from first half of Plan 4 + second half of Plan 3: ${genesHtml(k1.genes)} → ${k1.e} J, ${k1.d} ms</p>
+          <p>Child from first half of Plan 3 + second half of Plan 4: ${genesHtml(k2.genes)} → ${k2.e} J, ${k2.d} ms</p>
+          <p>The idea: good parents often contain good pieces. Plan 4 is great at energy, Plan 3 at delay. Their children mix those pieces and can land in between.</p>
+          <div class="note">Other versions exist, such as uniform crossover, where every gene is copied from a random parent. The principle is the same: children are made only from genes the parents already have.</div>`;
+      },
+    },
+    {
+      title: "Mutation: a small random change",
+      where: "Paper 1, Algorithm 5",
+      html: () => {
+        const before = plan("Child", "ACBB", "child"), after = CHILDREN[0];
+        return `
+          <p>Crossover can only reuse genes that the parents have. To discover new things, each child gets a small random change with a small probability.</p>
+          <p>Before: ${genesHtml(before.genes)} → ${before.e} J, ${before.d} ms</p>
+          <p>Mutation moves task 2 from the Cloud to Fog B:</p>
+          <p>After: ${genesHtml(after.genes)} → ${after.e} J, ${after.d} ms</p>
+          <p>This is Child 1. The mutation made it faster (16 ms instead of 20 ms) but more energy hungry. Whether that is good, the next sorting will decide.</p>
+          <div class="note">Paper 1's mutation swaps the places of two tasks instead of changing one. Different operator, same purpose: add a bit of randomness so the search does not get stuck.</div>`;
+      },
+    },
+    {
+      title: "All six children",
+      where: "The offspring O₀, and the constraint check (Paper 1, Algorithm 6)",
+      html: () => `
+        <p>Tournament, crossover and mutation are repeated until we have N = 6 children. This group is O<sub>0</sub>:</p>
+        ${planTableHtml(CHILDREN)}
+        <canvas id="plot" role="img" aria-label="Parents as filled dots, children as hollow dots"></canvas>
+        <p>Filled dots are the parents, hollow dots the children. Look at Child 3 (10 J, 16 ms): it is better than Plan 3 (10 J, 18 ms) on delay with the same energy.</p>
+        <div class="note">Every child is also checked against the constraints: deadline and memory in Paper 1. A child that breaks one is thrown away (Paper 1 sets its rank to infinity). Our toy example has no constraints, so all six survive this check.</div>`,
+      mount(root) { drawPlot(root.querySelector("#plot"), POOL); },
+    },
+    {
+      title: "Merge parents and children, sort again",
+      where: "Paper 1, Algorithm 7, lines 1 and 2",
+      html: () => `
+        <p>Now the key idea of NSGA-II: parents and children are thrown into <strong>one pool</strong> of 2N = 12 plans, R<sub>0</sub> = P<sub>0</sub> ∪ O<sub>0</sub>, and sorted together with the exact same procedure as before.</p>
+        <canvas id="plot" role="img" aria-label="All twelve plans coloured by front"></canvas>
+        ${frontLegend(Math.min(4, merged.fronts.length))}
+        ${planTableHtml(POOL.slice().sort((a, b) => mergedRank(a) - mergedRank(b)), [{ title: "Front", value: (p) => mergedRank(p) + 1 }])}
+        <p>Because parents compete against their own children, a good parent can never be lost, and a better child always gets in. This is called <strong>elitism</strong>, and it is the main reason NSGA-II works so well.</p>`,
+      mount(root) { drawPlot(root.querySelector("#plot"), POOL, { rankOf: mergedRank }); },
+    },
+    {
+      title: "Keep the best six",
+      where: "Paper 1, Algorithm 7, lines 3 to 11",
+      html: () => {
+        const f1 = merged.fronts[0];
+        const cutRows = [...cutFront].sort((a, b) => a.e - b.e).map((p) => {
+          const c = cutCrowd.get(p);
+          const kept = survivors.includes(p);
+          return `<tr class="${kept ? "keep" : "cut"}"><td>${p.name} (${p.e}, ${p.d})</td><td>${c.parts.join("<br>")}</td><td class="num"><b>${fmtCd(c.total)}</b></td><td>${kept ? "kept" : "dropped"}</td></tr>`;
+        }).join("");
+        return `
+          <p>We have 12 plans and room for 6. Fill the seats front by front:</p>
+          <ul>
+            <li>Front 1 has ${f1.length} plans: ${f1.map((p) => p.name).join(", ")}. They all fit. ${N - f1.length} seats left.</li>
+            <li>Front 2 has ${cutFront.length} plans, but only ${N - f1.length} seats are left. It does not fit, so crowding distance decides.</li>
+          </ul>
+          <div class="table-wrap"><table><thead><tr><th>Front 2 plan</th><th>Calculation</th><th>Crowding</th><th>Result</th></tr></thead><tbody>${cutRows}</tbody></table></div>
+          <p>The two end points have ∞, so they are kept. Everything in worse fronts is dropped without looking.</p>
+          <p>The new population P<sub>1</sub>:</p>
+          ${planTableHtml(survivors)}
+          <p>Notice that Plan 3 died. Child 3 does the same energy with less delay and took its seat.</p>`;
+      },
+    },
+    {
+      title: "Repeat, and the front improves",
+      where: "Paper 1, Algorithm 7, lines 12 to 15",
+      html: () => `
+        <p>P<sub>1</sub> becomes the parents of the next generation, and everything repeats: tournaments, crossover, mutation, merge, sort, keep the best N.</p>
+        <canvas id="plot" role="img" aria-label="Front 1 at generation 0 compared with front 1 after one generation"></canvas>
+        <div class="legend"><span><i style="border:2px dashed var(--muted)"></i>Front 1 at generation 0</span><span><i style="background:var(--f1)"></i>Front 1 after one generation</span></div>
+        <p>After just one generation, the front already moved down-left: new plans such as Child 3 (10 J, 16 ms) and Child 5 (8 J, 20 ms) are better trade-offs than anything we had before.</p>
+        <p>Paper 1 stops after a fixed number of generations. At the end, <strong>front 1 of the last population is the answer</strong>: a set of good trade-offs. Then someone picks one. Paper 1 uses weights, PCNME picks the knee point.</p>
+        <div class="note">This is where your other file, the examples page, takes over: it runs these same steps 150 times on 30 tasks so you can watch the front converge.</div>`,
+      mount(root) {
+        drawPlot(root.querySelector("#plot"), survivors, {
+          rankOf: rankIn(gen1),
+          lines: [
+            { points: gen0.fronts[0], color: cssVar("--muted"), dashed: true },
+            { points: gen1.fronts[0], color: cssVar("--f1"), dashed: false },
+          ],
+        });
+      },
+    },
+    {
+      title: "Where this sits in Paper 1 and in PCNME",
+      where: "The map",
+      html: () => `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Step you just did</th><th>Paper 1</th><th>PCNME</th></tr></thead>
+          <tbody>
+            <tr><td>Random population</td><td>Algorithm 7 input</td><td>Algorithm 1, line 3</td></tr>
+            <tr><td>Compute f1, f2, check constraints</td><td>Algorithm 6</td><td>Objective evaluation section</td></tr>
+            <tr><td>Who beats whom, peel fronts</td><td>Algorithm 2</td><td>Non-dominated sorting section</td></tr>
+            <tr><td>Crowding distance</td><td>Algorithm 3</td><td>Crowding distance section</td></tr>
+            <tr><td>Tournament</td><td>Not written out</td><td>Missing: parents are picked at random</td></tr>
+            <tr><td>Crossover</td><td>Algorithm 4</td><td>Binomial crossover of the DE step</td></tr>
+            <tr><td>Mutation</td><td>Algorithm 5</td><td>DE mutation</td></tr>
+            <tr><td>Merge, sort, keep best N, repeat</td><td>Algorithm 7</td><td>Algorithm 1, lines 6 to 15</td></tr>
+            <tr><td>Pick one plan from the front</td><td>Weights (Table 7)</td><td>Knee point</td></tr>
+          </tbody>
+        </table></div>
+        <p><strong>Where does MMDE fit?</strong> MMDE (Paper 1, Algorithms 8 to 11) is a different way to make children, based on differential evolution. It replaces or adds to the crossover and mutation steps. It does not change sorting, crowding or elitism.</p>
+        <p><strong>What changes in PCNME?</strong> Only the problem, not the algorithm: a gene is a pebble step instead of an IoT request, there are 5 places (4 fog nodes and the cloud), and f1 and f2 come from your energy and latency formulas.</p>`,
+    },
+    {
+      title: "The whole algorithm on one screen",
+      where: "Summary",
+      html: () => `
+        <p>Here is everything you just did, in order:</p>
+        <ul>
+          <li><strong>Start:</strong> N random plans. Compute f1 and f2 for each.</li>
+          <li><strong>Sort:</strong> count who beats whom, peel off fronts. Rank = front number.</li>
+          <li><strong>Crowding:</strong> inside each front, measure the empty space around each plan. Ends get ∞.</li>
+          <li><strong>Select parents:</strong> tournaments. Lower front wins, then more space wins.</li>
+          <li><strong>Make N children:</strong> crossover, then mutation. Throw out children that break constraints.</li>
+          <li><strong>Merge:</strong> parents + children = 2N plans. Sort again.</li>
+          <li><strong>Survive:</strong> fill N seats front by front. The front that does not fit is cut by crowding distance.</li>
+          <li><strong>Repeat</strong> for G generations. Front 1 at the end is the answer.</li>
+        </ul>
+        <p>Three ideas make NSGA-II special compared with a plain genetic algorithm: <strong>fronts</strong> (so two goals can be compared), <strong>crowding distance</strong> (so the front stays spread out), and <strong>elitism</strong> (parents compete with children, so nothing good is lost).</p>
+        <div class="note">Now open your examples file. Every dot, colour and ring there should make sense.</div>`,
+    },
+  ];
+
+  // ---------------- Navigation ----------------
+  const card = document.getElementById("card");
+  const progress = document.getElementById("progress");
+  let index = 0;
+
+  STEPS.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.setAttribute("aria-label", `Step ${i + 1}: ${s.title}`);
+    b.title = s.title;
+    b.addEventListener("click", () => go(i));
+    progress.appendChild(b);
+  });
+
+  function render() {
+    const s = STEPS[index];
+    card.innerHTML = `<h2>${index + 1}. ${s.title}</h2><p class="where">${s.where}</p>${s.html()}`;
+    if (s.mount) s.mount(card);
+    document.getElementById("counter").textContent = `Step ${index + 1} of ${STEPS.length}`;
+    [...progress.children].forEach((b, i) => {
+      b.className = i === index ? "current" : i < index ? "done" : "";
+      b.setAttribute("aria-current", i === index ? "step" : "false");
+    });
+    document.getElementById("back").disabled = index === 0;
+    const next = document.getElementById("next");
+    next.disabled = index === STEPS.length - 1;
+    next.textContent = index === STEPS.length - 1 ? "Finished" : "Next";
+  }
+
+  function go(i) {
+    index = Math.max(0, Math.min(STEPS.length - 1, i));
+    render();
+    window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
+  }
+
+  document.getElementById("back").addEventListener("click", () => go(index - 1));
+  document.getElementById("next").addEventListener("click", () => go(index + 1));
+  document.addEventListener("keydown", (e) => {
+    if (e.target.matches("input, textarea")) return;
+    if (e.key === "ArrowRight") go(index + 1);
+    if (e.key === "ArrowLeft") go(index - 1);
+  });
+
+  let resizeTimer = null;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(render, 200); });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+  new MutationObserver(render).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(render);
+
+  render();
+})();
+</script>
+</body>
+</html>
