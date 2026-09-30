@@ -24,7 +24,7 @@ cd ..
 
 ```bash
 # 1. Configure PostgreSQL database
-python setup_postgresql.py
+python scripts/setup_postgresql.py
 
 # You'll see:
 # [OK]  Connection to PostgreSQL successful

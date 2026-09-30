@@ -5,7 +5,7 @@ Configure PostgreSQL database for metrics storage.
 ## Quick Setup (2 min)
 
 ```bash
-python setup_postgresql.py
+python scripts/setup_postgresql.py
 ```
 
 This automatically:

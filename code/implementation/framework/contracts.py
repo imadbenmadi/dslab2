@@ -52,6 +52,14 @@ class CloudForwarded:
 
 
 @dataclass
+class VehicleTaskAck:
+    vehicle_id: str
+    task_id: str
+    status: str
+    timestamp_s: float
+
+
+@dataclass
 class TaskCompleted:
     task_id: str
     vehicle_id: str

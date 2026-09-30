@@ -8,11 +8,18 @@ Run this FIRST before starting the system to:
 4. Test connection
 
 Usage:
-    python setup_postgresql.py
+    python scripts/setup_postgresql.py
 """
 
+import os
 import sys
 from pathlib import Path
+
+# Run from the project root so relative paths and project imports resolve.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+os.chdir(PROJECT_ROOT)
+sys.path.insert(0, str(PROJECT_ROOT))
+
 
 def check_postgresql_installed():
     """Check if PostgreSQL is installed and accessible."""

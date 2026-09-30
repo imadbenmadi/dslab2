@@ -68,10 +68,10 @@ docs/
 
 ```bash
 # 1. Setup PostgreSQL
-python setup_postgresql.py
+python scripts/setup_postgresql.py
 
 # 2. Run verification
-python complete_system_setup.py
+python scripts/complete_system_setup.py
 
 # 3. Terminal 1: Backend
 python app.py proposed

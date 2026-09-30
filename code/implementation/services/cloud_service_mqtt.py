@@ -21,7 +21,7 @@ import threading
 from infrastructure.mqtt_bus import MQTTServiceBus, MQTTEventBridge, MQTTQoS
 from infrastructure.model_signing import ModelArtifactManager
 from infrastructure.pki_manager import PKIManager
-from infrastructure.openflow_controller import bootstrap_openflow_controller
+from sdn.openflow_controller import bootstrap_openflow_controller
 
 
 class CloudServiceMQTT:

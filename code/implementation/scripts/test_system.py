@@ -4,6 +4,13 @@ Quick System Verification Test
 Checks all components are working
 """
 import os
+import sys
+from pathlib import Path
+
+# Run from the project root so relative paths and project imports resolve.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+os.chdir(PROJECT_ROOT)
+sys.path.insert(0, str(PROJECT_ROOT))
 
 print("=" * 80)
 print("SMART CITY SYSTEM - QUICK TEST")
@@ -66,8 +73,8 @@ print("-" * 80)
 files = {
     'app.py': 'Main orchestrator',
     'config.py': 'Configuration',
-    'setup_postgresql.py': 'Database setup',
-    'complete_system_setup.py': 'System verification',
+    'scripts/setup_postgresql.py': 'Database setup',
+    'scripts/complete_system_setup.py': 'System verification',
     'requirements.txt': 'Dependencies',
     'README.md': 'Documentation',
 }
@@ -99,7 +106,7 @@ found = 0
 for fname, desc in baselines.items():
     path = os.path.join(os.getcwd(), fname)
     if os.path.isfile(path):
-        lines = len(open(path).readlines())
+        lines = len(open(path, encoding="utf-8").readlines())
         print(f"  [OK]  {fname:<30} ({lines:>4} lines) - {desc}")
         found += 1
     else:
@@ -125,7 +132,7 @@ found = 0
 for fname, desc in docs.items():
     path = os.path.join(os.getcwd(), fname)
     if os.path.isfile(path):
-        lines = len(open(path).readlines())
+        lines = len(open(path, encoding="utf-8").readlines())
         print(f"  [OK]  {fname:<40} ({lines:>3} lines)")
         found += 1
     else:

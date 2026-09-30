@@ -503,7 +503,7 @@ python -m unittest discover -s tests -p "test_*.py"
 There is also a quick manual verification script:
 
 ```bash
-python test_system.py
+python scripts/test_system.py
 ```
 
 ---

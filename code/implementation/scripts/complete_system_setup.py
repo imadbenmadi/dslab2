@@ -13,12 +13,18 @@ Steps:
 5. Start system
 
 Usage:
-    python complete_system_setup.py
+    python scripts/complete_system_setup.py
 """
 
+import os
 import sys
 import subprocess
 from pathlib import Path
+
+# Run from the project root so relative paths and project imports resolve.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+os.chdir(PROJECT_ROOT)
+sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def print_section(title):
@@ -95,9 +101,9 @@ def setup_postgresql():
     print("    Services → PostgreSQL XX → Start\n")
     
     # Try to run setup script
-    if Path("setup_postgresql.py").exists():
+    if Path("scripts/setup_postgresql.py").exists():
         result = subprocess.run(
-            "python setup_postgresql.py",
+            "python scripts/setup_postgresql.py",
             shell=True,
             capture_output=True,
             text=True,
@@ -112,7 +118,7 @@ def setup_postgresql():
             print(result.stderr)
             return False
     else:
-        print("✗ setup_postgresql.py not found\n")
+        print("✗ scripts/setup_postgresql.py not found\n")
         return False
 
 

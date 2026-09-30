@@ -1,12 +1,18 @@
 """
 Setup verification and quick-start helper for distributed services.
 
-Run: python check_setup.py
+Run: python scripts/check_setup.py
 """
 
+import os
 import sys
 from pathlib import Path
 from importlib.util import find_spec
+
+# Run from the project root so relative paths and project imports resolve.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+os.chdir(PROJECT_ROOT)
+sys.path.insert(0, str(PROJECT_ROOT))
 
 
 def check_python_packages():

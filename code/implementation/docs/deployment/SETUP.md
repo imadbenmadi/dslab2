@@ -44,7 +44,7 @@ pip install -r requirements.txt --no-cache-dir
 **Automatic (Recommended):**
 
 ```bash
-python setup_postgresql.py
+python scripts/setup_postgresql.py
 ```
 
 **Manual (if automatic fails):**
@@ -83,7 +83,7 @@ EOF
 ## Step 4: Verify Setup (1 min)
 
 ```bash
-python complete_system_setup.py
+python scripts/complete_system_setup.py
 ```
 
 Expected output:
@@ -230,7 +230,7 @@ pg_isready -h localhost
 # Linux: sudo systemctl restart postgresql
 
 # Then rerun setup
-python setup_postgresql.py
+python scripts/setup_postgresql.py
 ```
 
 ### Frontend Won't Start
