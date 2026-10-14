@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>NSGA-II, explained through task offloading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F2F4F6;
+  --panel: #FFFFFF;
+  --ink: #17202B;
+  --muted: #5B6675;
+  --line: #D5DAE0;
+  --f1: #0E8C7F;
+  --f2: #C98A12;
+  --f3: #7056C4;
+  --rest: #A9B1BB;
+  --bad: #C2413A;
+  --good: #2F8F4E;
+  --n0: #3B7DD8;
+  --n1: #D1603D;
+  --n2: #6E9A2F;
+  --n3: #B24C8A;
+  --n4: #7C8794;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12171D; --panel: #1A2129; --ink: #E7ECF1; --muted: #9AA6B2; --line: #2A333D;
+    --f1: #3CC2B1; --f2: #E3A93A; --f3: #9C86E6; --rest: #56606B; --bad: #E0645C; --good: #5CC27E;
+    --n0: #6BA3F0; --n1: #E8845F; --n2: #9BC45A; --n3: #D77AB3; --n4: #9AA6B2;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12171D; --panel: #1A2129; --ink: #E7ECF1; --muted: #9AA6B2; --line: #2A333D;
+  --f1: #3CC2B1; --f2: #E3A93A; --f3: #9C86E6; --rest: #56606B; --bad: #E0645C; --good: #5CC27E;
+  --n0: #6BA3F0; --n1: #E8845F; --n2: #9BC45A; --n3: #D77AB3; --n4: #9AA6B2;
+}
+*, *::before, *::after { box-sizing: inherit; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  -webkit-text-size-adjust: 100%;
+}
+main { max-width: 1040px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.15; margin: 0; }
+h1 { font-size: clamp(2.1rem, 5vw, 3.4rem); font-weight: 700; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 700; margin-top: 4rem; letter-spacing: -0.01em; }
+h3 { font-size: 1.15rem; font-weight: 500; margin-top: 2rem; }
+p { margin: 0.9rem 0; }
+.lede { font-size: 1.2rem; color: var(--muted); max-width: 60ch; margin-top: 1rem; }
+a { color: var(--f1); }
+strong { font-weight: 600; }
+.demo {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1rem;
+  margin: 1.5rem 0;
+}
+.demo canvas { display: block; width: 100%; touch-action: manipulation; cursor: crosshair; }
+.hero-demo { border-radius: 18px; padding: 1.25rem; margin-top: 2rem; }
+.controls { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-top: 0.85rem; }
+button {
+  font-family: var(--display);
+  font-size: 0.95rem;
+  font-weight: 500;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+button.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+button:focus-visible { outline: 3px solid var(--f1); outline-offset: 2px; }
+button:disabled { opacity: 0.45; cursor: default; }
+.readout { font-family: var(--display); font-size: 0.95rem; color: var(--muted); margin-top: 0.6rem; min-height: 1.5em; }
+.stats { display: flex; flex-wrap: wrap; gap: 1.5rem; margin-top: 0.85rem; font-family: var(--display); }
+.stat b { display: block; font-size: 1.45rem; font-weight: 700; color: var(--ink); }
+.stat span { font-size: 0.85rem; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 0.9rem; font-family: var(--display); font-size: 0.85rem; color: var(--muted); margin-top: 0.6rem; }
+.legend i { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: -0.1rem; }
+.genes { display: grid; gap: 3px; margin-top: 0.5rem; }
+.gene {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  font-family: var(--display);
+  font-size: 0.7rem;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  transition: transform 0.25s ease;
+}
+.gene.flash { transform: scale(1.25); box-shadow: 0 0 0 3px var(--ink); }
+.gene.fromA { box-shadow: inset 0 -4px 0 rgba(255,255,255,0.85); }
+.chrom-row { display: grid; grid-template-columns: 5.5rem 1fr; align-items: center; gap: 0.5rem; margin-top: 0.4rem; }
+.chrom-row label { font-family: var(--display); font-size: 0.9rem; color: var(--muted); }
+.chrom-row .genes { margin-top: 0; }
+ol.loop { padding-left: 1.4rem; max-width: 68ch; }
+ol.loop li { margin: 0.7rem 0; padding-left: 0.3rem; }
+ol.loop li::marker { font-family: var(--display); font-weight: 700; color: var(--f1); }
+.table-wrap { overflow-x: auto; margin: 1.25rem 0; }
+table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 0.97rem; }
+th, td { text-align: left; padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--display); font-weight: 500; color: var(--muted); font-size: 0.9rem; }
+td:first-child { font-family: var(--display); white-space: nowrap; }
+.tag { font-family: var(--display); font-size: 0.8rem; padding: 0.1rem 0.5rem; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.tag.core { color: var(--f1); border-color: var(--f1); }
+.tag.mmde { color: var(--f3); border-color: var(--f3); }
+.tag.base { color: var(--muted); }
+.issue { border-left: 3px solid var(--bad); padding: 0.1rem 0 0.1rem 1rem; margin: 1.25rem 0; max-width: 68ch; }
+.issue.ok { border-color: var(--good); }
+.issue h3 { margin-top: 0; font-size: 1.05rem; }
+.issue p { margin: 0.4rem 0; }
+.formula { font-family: var(--display); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.7rem 1rem; display: inline-block; margin: 0.4rem 0; }
+footer { margin-top: 4rem; color: var(--muted); font-size: 0.9rem; max-width: 68ch; }
+@media (prefers-reduced-motion: reduce) { .gene { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>NSGA-II, one generation at a time</h1>
+    <p class="lede">Thirty tasks, four fog nodes, one cloud. Every dot below is a complete offloading plan. Watch the population learn that you cannot have both the lowest energy and the lowest delay, and settle on the best compromises instead.</p>
+  </header>
+
+  <section class="demo hero-demo" aria-label="Live NSGA-II run">
+    <canvas id="hero" role="img" aria-label="Scatter plot of offloading plans by energy and delay, evolving over generations"></canvas>
+    <div class="stats">
+      <div class="stat"><b id="sGen">0</b><span>generation</span></div>
+      <div class="stat"><b id="sFront">0</b><span>plans on front 1</span></div>
+      <div class="stat"><b id="sE">0</b><span>lowest energy (J)</span></div>
+      <div class="stat"><b id="sD">0</b><span>lowest delay (ms)</span></div>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--f1)"></i>Front 1 (nobody beats them)</span>
+      <span><i style="background:var(--f2)"></i>Front 2</span>
+      <span><i style="background:var(--f3)"></i>Front 3</span>
+      <span><i style="background:var(--rest)"></i>Worse fronts</span>
+      <span><i style="background:transparent;border:2px dashed var(--muted)"></i>Front 1 at generation 0</span>
+    </div>
+    <div class="controls">
+      <button id="hPlay" class="primary">Pause</button>
+      <button id="hStep">Next generation</button>
+      <button id="hReset">New random tasks</button>
+    </div>
+    <p class="readout">The ringed plan is the knee point: the best balance between the two goals. Its chromosome, one gene per task:</p>
+    <div id="kneeGenes" class="genes" style="grid-template-columns:repeat(30,1fr)"></div>
+    <div class="legend">
+      <span><i style="background:var(--n0)"></i>Fog 1</span>
+      <span><i style="background:var(--n1)"></i>Fog 2</span>
+      <span><i style="background:var(--n2)"></i>Fog 3</span>
+      <span><i style="background:var(--n3)"></i>Fog 4</span>
+      <span><i style="background:var(--n4)"></i>Cloud</span>
+    </div>
+  </section>
+
+  <div class="prose">
+    <p>In this toy model the cloud is cheap in energy but far away, so it is slow. Fog nodes are fast but spend more energy and slow down when you pile tasks onto one of them. That tension is exactly the one in Paper 1 and in PCNME: <strong>two goals that fight each other</strong>.</p>
+  </div>
+
+  <h2>Why one best answer does not exist</h2>
+  <div class="prose">
+    <p>With one goal, you just pick the smallest number. With two goals, plan A might use less energy while plan B has less delay. Neither is better. NSGA-II needs a rule to compare plans, and that rule is <strong>dominance</strong>.</p>
+    <p class="formula">A dominates B if A is no worse on both goals and strictly better on at least one.</p>
+    <p>Click any plan below. Plans it dominates turn red: they sit up and to the right, worse on both goals. Plans that dominate it turn green. Everything else is a trade-off: better on one goal, worse on the other.</p>
+  </div>
+  <section class="demo" aria-label="Dominance demo">
+    <canvas id="dom" role="img" aria-label="Click a point to see which points it dominates"></canvas>
+    <p class="readout" id="domText">Click a plan.</p>
+  </section>
+  <div class="prose">
+    <p>The plans nobody dominates form the <strong>Pareto front</strong>. Every point on it is a legitimate answer. Choosing one of them is a human decision about how much you value energy against delay, not a math question.</p>
+  </div>
+
+  <h2>How a plan is written down: the chromosome</h2>
+  <div class="prose">
+    <p>A genetic algorithm needs every solution encoded as a list. Here each position is a task and each value is where that task runs. Paper 1 does the same, with one gene per IoT request. PCNME does it per pebble step.</p>
+    <p><strong>Crossover</strong> builds a child from two parents: each gene is copied from one parent or the other. The white bar marks genes taken from parent A. <strong>Mutation</strong> randomly moves one task to a different node, so the search can reach assignments neither parent had.</p>
+  </div>
+  <section class="demo" aria-label="Chromosome demo">
+    <div class="chrom-row"><label>Parent A</label><div id="cA" class="genes" style="grid-template-columns:repeat(12,1fr)"></div></div>
+    <div class="chrom-row"><label>Parent B</label><div id="cB" class="genes" style="grid-template-columns:repeat(12,1fr)"></div></div>
+    <div class="chrom-row"><label>Child</label><div id="cC" class="genes" style="grid-template-columns:repeat(12,1fr)"></div></div>
+    <div class="controls">
+      <button id="cCross" class="primary">Cross over</button>
+      <button id="cMut">Mutate child</button>
+      <button id="cNew">New parents</button>
+    </div>
+    <p class="readout" id="cText">Numbers are node IDs: 1 to 4 are fog nodes, 5 is the cloud.</p>
+  </section>
+
+  <h2>Sorting the population into fronts</h2>
+  <div class="prose">
+    <p>This is the first half of NSGA-II's name: <strong>non-dominated sorting</strong>. Find everyone nobody beats: that is front 1. Remove them. Among the rest, find everyone nobody beats: front 2. Repeat until the population is empty. A plan's front number is its rank, and lower is better.</p>
+    <p>Paper 1's Algorithm 2 is the fast version from Deb (2002). Instead of re-checking everyone each round, it records once who dominates whom, then peels the fronts using counters. Same result, much faster.</p>
+  </div>
+  <section class="demo" aria-label="Non-dominated sorting demo">
+    <canvas id="sort" role="img" aria-label="Points being peeled into Pareto fronts"></canvas>
+    <div class="controls">
+      <button id="sPeel" class="primary">Peel next front</button>
+      <button id="sReset">Start over</button>
+    </div>
+    <p class="readout" id="sortText">All plans are unsorted.</p>
+  </section>
+
+  <h2>Keeping the front spread out: crowding distance</h2>
+  <div class="prose">
+    <p>Rank alone is not enough. If all survivors bunch up in one corner, you only learn one kind of trade-off. So within a front, NSGA-II prefers plans that sit in empty regions. For each plan, take its two neighbours on the front and measure the box between them, normalised by the front's range on each goal. A bigger box means lonelier and more valuable. The two end points get infinity so the extremes are never lost.</p>
+    <p>Click a point on the front.</p>
+  </div>
+  <section class="demo" aria-label="Crowding distance demo">
+    <canvas id="crowd" role="img" aria-label="Click a point on the front to see its crowding box"></canvas>
+    <p class="readout" id="crowdText">Click a point.</p>
+  </section>
+
+  <h2>The full loop</h2>
+  <div class="prose">
+    <p>Now the pieces fit together. One generation, which is what happens every time you press "Next generation" at the top:</p>
+  </div>
+  <ol class="loop">
+    <li><strong>Start</strong> with N random plans and compute energy and delay for each.</li>
+    <li><strong>Pick parents by tournament.</strong> Grab two random plans. The lower front wins. If they share a front, the larger crowding distance wins.</li>
+    <li><strong>Make N children</strong> with crossover and mutation, then evaluate them.</li>
+    <li><strong>Merge</strong> parents and children into one pool of 2N.</li>
+    <li><strong>Sort</strong> the pool into fronts.</li>
+    <li><strong>Refill the next population</strong> front by front. When a front does not fit completely, take its members with the largest crowding distance.</li>
+    <li><strong>Repeat</strong> until the generation limit. Front 1 of the final population is your answer.</li>
+  </ol>
+  <div class="prose">
+    <p>Step 4 is why NSGA-II is called elitist: parents compete with their own children, so a good plan can never be lost. That, fast sorting and crowding distance are the three ideas Deb added in 2002. Everything else is a normal genetic algorithm.</p>
+    <p>Constraints such as deadlines and memory are usually handled by a simple rule: a plan that breaks a constraint always loses to a plan that does not. Paper 1 does something cruder: it sets the rank of an infeasible plan to infinity so it dies immediately.</p>
+  </div>
+
+  <h2>Paper 1's eleven algorithms, mapped</h2>
+  <div class="prose">
+    <p>It looks like a lot of work, but most of it is the standard toolkit written out. Here is what each algorithm really is.</p>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Algorithm</th><th>What it does</th><th>Origin</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Exact solver (NIP): relax the 0/1 choices, solve, add cuts until the answer is whole numbers. Used only as the optimal baseline.</td><td><span class="tag base">Baseline</span></td></tr>
+        <tr><td>2</td><td>Fast non-dominated sorting into fronts.</td><td><span class="tag core">Deb 2002</span></td></tr>
+        <tr><td>3</td><td>Crowding distance within a front.</td><td><span class="tag core">Deb 2002</span></td></tr>
+        <tr><td>4</td><td>Crossover: cut both parents in half and swap the halves.</td><td><span class="tag core">Standard GA</span></td></tr>
+        <tr><td>5</td><td>Mutation: swap the destinations of two random requests.</td><td><span class="tag core">Standard GA</span></td></tr>
+        <tr><td>6</td><td>Fitness: compute energy and delay, kill plans that break a constraint.</td><td><span class="tag core">Their model</span></td></tr>
+        <tr><td>7</td><td>The NSGA-II main loop: merge, sort, refill, repeat.</td><td><span class="tag core">Deb 2002</span></td></tr>
+        <tr><td>8</td><td>MMDE main loop: min-heap of the population ordered by fitness.</td><td><span class="tag mmde">Qiu 2017 / Kaur 2020</span></td></tr>
+        <tr><td>9</td><td>MMDE fitness: the same check as Algorithm 6.</td><td><span class="tag mmde">Their adaptation</span></td></tr>
+        <tr><td>10</td><td>Bottom-boosting: improve the worst individuals at the heap root with differential mutation.</td><td><span class="tag mmde">Kaur 2020</span></td></tr>
+        <tr><td>11</td><td>Partial regeneration: replace the weakest individuals with fresh differential-evolution trials.</td><td><span class="tag mmde">Kaur 2020</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>So their own contribution is the energy and delay model, the encoding, and plugging MMDE into NSGA-II. Algorithms 2, 3 and 7 you can implement with one library call in pymoo.</p>
+  </div>
+
+  <h3>Where Paper 1 is weaker than it looks</h3>
+  <div class="issue">
+    <h3>They never clearly say how MMDE plugs into NSGA-II</h3>
+    <p>Algorithms 8 to 11 describe MMDE as its own loop with a single fitness value per individual. A min-heap needs one number to order by, while NSGA-II has two objectives. The paper does not explain where MMDE replaces or adds to the NSGA-II steps. If you ever claim to reproduce "NSGA-II-MMDE", you will have to decide this yourself.</p>
+  </div>
+  <div class="issue">
+    <h3>Their Pareto front comes from a weighted sum</h3>
+    <p>Table 7 builds the front by sweeping weights from 0 to 1, eleven single-objective runs. That is exactly the work NSGA-II is meant to avoid, since one run already gives the whole front.</p>
+  </div>
+  <div class="issue">
+    <h3>The statistics are read backwards</h3>
+    <p>The ANOVA gives significance 0.417, above 0.05, and they write that the alternative hypothesis is accepted. The correct reading is the opposite: there is no significant difference in energy between the methods. Do not cite their energy comparison as proven.</p>
+  </div>
+  <div class="issue">
+    <h3>Small errors in the pseudo-code</h3>
+    <p>In Algorithm 2 the front-peeling loop sits inside the first loop instead of after it. Algorithm 4 is called "tournament" but is one-point crossover; tournament is a selection method. Harmless for understanding, but do not copy them.</p>
+  </div>
+
+  <h2>Your PCNME optimizer</h2>
+  <div class="prose">
+    <p>The skeleton is right: integer chromosome, non-dominated sorting, crowding distance, knee point. The problems are in the details, and some are real bugs.</p>
+  </div>
+  <div class="issue">
+    <h3>Arithmetic on node IDs means nothing</h3>
+    <p>Your mutation computes r1 + F × (r2 − r3) on gene values. Genes are node labels, not quantities. "Fog 4 minus fog 1" is not a direction in any space, so this is effectively a biased random reassignment. Use a categorical operator instead, for example: copy the gene from r2 where r2 and r3 disagree, otherwise keep r1's gene. Or use plain random reassignment plus crossover.</p>
+  </div>
+  <div class="issue">
+    <h3>This is not MMDE</h3>
+    <p>What you wrote is standard DE/rand/1 with binomial crossover. There is no min-heap, no bottom-boosting and no partial regeneration. Call it "DE-enhanced NSGA-II", or implement GDE3, the standard multi-objective DE. The pymoode package offers it, but check the current version before relying on it.</p>
+  </div>
+  <div class="issue">
+    <h3>Your selection rule contradicts itself</h3>
+    <p>The text says the trial replaces the parent "if it is not dominated". The formula says "if it dominates the parent, or equals it". Those are different rules. On top of that, step 14 merges again and re-sorts, which is a second, different selection. Pick one scheme: GDE3's rule (trial dominates: replace; parent dominates: keep; neither: keep both, then trim by sorting and crowding), or classic NSGA-II with tournament, children, merge and truncate.</p>
+  </div>
+  <div class="issue">
+    <h3>No parent selection and no constraint handling</h3>
+    <p>r1, r2 and r3 are drawn uniformly, so rank and crowding never influence who breeds. You also never say what happens to a plan that breaks a deadline or a fog capacity. State the constrained-dominance rule explicitly.</p>
+  </div>
+  <div class="issue">
+    <h3>The latency objective does not match the problem</h3>
+    <p>Your problem defines task latency along the DAG's critical path, but the optimizer sums the latency of every step. And fog load is frozen per batch, so placing twenty steps on the same fog costs the same as placing one. The optimizer will pile everything on the least-loaded node, and the capacity constraint is the only thing stopping it. Make load grow with assignment, as in the toy model at the top of this page.</p>
+  </div>
+  <div class="issue ok">
+    <h3>What is already good</h3>
+    <p>Knee-point selection is a cleaner choice than Paper 1's weight sweep. Hypervolume is the right quality metric for the front. The complexity analysis is correct. Keeping the whole front instead of only the knee, which your supervisor asked for, is the remaining big fix.</p>
+  </div>
+
+  <h2>What you should be able to say without notes</h2>
+  <div class="prose">
+    <p>What dominance means, and why two objectives give a front instead of one answer. How the chromosome encodes a plan. Why sorting gives ranks and why crowding keeps diversity. What elitism is and where it happens in the loop. How constraints are enforced. Why NSGA-II runs offline in PCNME: it needs thousands of evaluations per decision, while the DQN needs one forward pass. If you can explain those six things plainly, you understand NSGA-II better than most papers that use it.</p>
+  </div>
+
+  <footer>Toy model on this page: 30 tasks of 200 to 1,800 MI, four fog nodes with different speeds and energy costs, and a slower but energy-cheap cloud. Delay on a fog node grows with the number of tasks placed on it. Numbers are illustrative, not PCNME's parameters.</footer>
+</main>
+
+<script>
+(() => {
+  "use strict";
+
+  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const cssVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const NODE_VARS = ["--n0", "--n1", "--n2", "--n3", "--n4"];
+  const FRONT_VARS = ["--f1", "--f2", "--f3"];
+
+  function makeRng(seed) {
+    let s = seed >>> 0;
+    return () => {
+      s = (s + 0x6D2B79F5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function setupCanvas(canvas) {
+    const width = canvas.parentElement.clientWidth - 2;
+    const aspect = width < 560 ? 0.85 : 0.55;
+    const height = Math.round(width * aspect);
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.height = height + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { ctx, w: width, h: height };
+  }
+
+  const PAD = { l: 52, r: 16, t: 14, b: 40 };
+
+  function drawAxes(ctx, w, h, bounds, xLabel, yLabel, showTicks) {
+    ctx.clearRect(0, 0, w, h);
+    ctx.strokeStyle = cssVar("--line");
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(PAD.l, PAD.t);
+    ctx.lineTo(PAD.l, h - PAD.b);
+    ctx.lineTo(w - PAD.r, h - PAD.b);
+    ctx.stroke();
+    ctx.fillStyle = cssVar("--muted");
+    ctx.font = "13px 'Bricolage Grotesque', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(xLabel, PAD.l + (w - PAD.l - PAD.r) / 2, h - 8);
+    ctx.save();
+    ctx.translate(14, PAD.t + (h - PAD.t - PAD.b) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.fillText(yLabel, 0, 0);
+    ctx.restore();
+    if (!showTicks) return;
+    ctx.font = "11px 'Bricolage Grotesque', system-ui, sans-serif";
+    for (let i = 0; i <= 4; i++) {
+      const fx = i / 4;
+      const x = PAD.l + fx * (w - PAD.l - PAD.r);
+      const xv = bounds.x0 + fx * (bounds.x1 - bounds.x0);
+      ctx.textAlign = "center";
+      ctx.fillText(xv.toFixed(1), x, h - PAD.b + 15);
+      const y = h - PAD.b - fx * (h - PAD.t - PAD.b);
+      const yv = bounds.y0 + fx * (bounds.y1 - bounds.y0);
+      ctx.textAlign = "right";
+      ctx.fillText(Math.round(yv).toString(), PAD.l - 6, y + 4);
+    }
+  }
+
+  function makeMapper(w, h, bounds) {
+    const pw = w - PAD.l - PAD.r;
+    const ph = h - PAD.t - PAD.b;
+    return (x, y) => [
+      PAD.l + ((x - bounds.x0) / (bounds.x1 - bounds.x0)) * pw,
+      h - PAD.b - ((y - bounds.y0) / (bounds.y1 - bounds.y0)) * ph,
+    ];
+  }
+
+  function dot(ctx, x, y, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function frontColor(rank) {
+    return rank < FRONT_VARS.length ? cssVar(FRONT_VARS[rank]) : cssVar("--rest");
+  }
+
+  // ---------- Multi-objective core (shared by all demos) ----------
+
+  function dominates(a, b) {
+    return a.x <= b.x && a.y <= b.y && (a.x < b.x || a.y < b.y);
+  }
+
+  function nonDominatedSort(items) {
+    const n = items.length;
+    const beats = items.map(() => []);
+    const beatenBy = new Array(n).fill(0);
+    const fronts = [[]];
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (i === j) continue;
+        if (dominates(items[i], items[j])) beats[i].push(j);
+        else if (dominates(items[j], items[i])) beatenBy[i]++;
+      }
+      if (beatenBy[i] === 0) {
+        items[i].rank = 0;
+        fronts[0].push(i);
+      }
+    }
+    let k = 0;
+    while (fronts[k].length > 0) {
+      const next = [];
+      for (const i of fronts[k]) {
+        for (const j of beats[i]) {
+          beatenBy[j]--;
+          if (beatenBy[j] === 0) {
+            items[j].rank = k + 1;
+            next.push(j);
+          }
+        }
+      }
+      k++;
+      fronts.push(next);
+    }
+    fronts.pop();
+    return fronts.map((f) => f.map((i) => items[i]));
+  }
+
+  function assignCrowding(front) {
+    for (const s of front) s.cd = 0;
+    if (front.length <= 2) {
+      for (const s of front) s.cd = Infinity;
+      return;
+    }
+    for (const key of ["x", "y"]) {
+      const sorted = [...front].sort((a, b) => a[key] - b[key]);
+      const lo = sorted[0][key];
+      const hi = sorted[sorted.length - 1][key];
+      sorted[0].cd = Infinity;
+      sorted[sorted.length - 1].cd = Infinity;
+      if (hi === lo) continue;
+      for (let i = 1; i < sorted.length - 1; i++) {
+        sorted[i].cd += (sorted[i + 1][key] - sorted[i - 1][key]) / (hi - lo);
+      }
+    }
+  }
+
+  // ---------- Hero: live NSGA-II on a toy offloading problem ----------
+
+  const TASKS = 30;
+  const NODES = 5; // indices 0..3 fog, 4 cloud
+  const POP = 40;
+  const MAX_GEN = 150;
+  const FOG_MIPS = [4000, 4000, 3000, 5000];
+  const FOG_KAPPA = [0.0010, 0.0009, 0.0007, 0.0013];
+  const CLOUD_MIPS = 6000;
+  const UPLINK_MBPS = 100;
+  const BACKBONE_MBPS = 1000;
+  const WAN_MS = 180;
+  const ACCESS_MS = 2;
+  const TX_WATTS = 0.5;
+  const WAN_ENERGY_FACTOR = 1.8;
+  const LOAD_SLOWDOWN = 0.08;
+  const MI_CHOICES = [200, 500, 800, 1000, 1200, 1500, 1800];
+
+  const hero = {
+    rand: null, tasks: [], pop: [], gen: 0, gen0Front: [], bounds: null,
+    running: false, timer: null, canvas: document.getElementById("hero"),
+  };
+
+  function makeTasks(rand) {
+    return Array.from({ length: TASKS }, () => ({
+      mi: MI_CHOICES[Math.floor(rand() * MI_CHOICES.length)],
+      kb: 100 + rand() * 500,
+    }));
+  }
+
+  function evaluatePlan(genes) {
+    const perFog = [0, 0, 0, 0];
+    for (const g of genes) if (g < 4) perFog[g]++;
+    let energy = 0;
+    let delay = 0;
+    genes.forEach((g, j) => {
+      const { mi, kb } = hero.tasks[j];
+      const uplinkMs = (8 * kb) / UPLINK_MBPS;
+      const uplinkJ = (TX_WATTS * uplinkMs) / 1000;
+      if (g < 4) {
+        const execMs = (mi / FOG_MIPS[g]) * 1000 * (1 + LOAD_SLOWDOWN * (perFog[g] - 1));
+        delay += uplinkMs + ACCESS_MS + execMs;
+        energy += uplinkJ + FOG_KAPPA[g] * mi;
+      } else {
+        delay += uplinkMs + ACCESS_MS + (8 * kb) / BACKBONE_MBPS + WAN_MS + (mi / CLOUD_MIPS) * 1000;
+        energy += uplinkJ * (1 + WAN_ENERGY_FACTOR);
+      }
+    });
+    return { x: energy, y: delay / 1000 };
+  }
+
+  function newPlan(genes) {
+    const { x, y } = evaluatePlan(genes);
+    return { genes, x, y, rank: 0, cd: 0 };
+  }
+
+  function randomGenes() {
+    return Array.from({ length: TASKS }, () => Math.floor(hero.rand() * NODES));
+  }
+
+  function tournament() {
+    const a = hero.pop[Math.floor(hero.rand() * POP)];
+    const b = hero.pop[Math.floor(hero.rand() * POP)];
+    if (a.rank !== b.rank) return a.rank < b.rank ? a : b;
+    return a.cd >= b.cd ? a : b;
+  }
+
+  function breed(p1, p2) {
+    const c1 = [...p1.genes];
+    const c2 = [...p2.genes];
+    if (hero.rand() < 0.9) {
+      for (let i = 0; i < TASKS; i++) {
+        if (hero.rand() < 0.5) { c1[i] = p2.genes[i]; c2[i] = p1.genes[i]; }
+      }
+    }
+    for (const c of [c1, c2]) {
+      for (let i = 0; i < TASKS; i++) {
+        if (hero.rand() < 1 / TASKS) c[i] = Math.floor(hero.rand() * NODES);
+      }
+    }
+    return [newPlan(c1), newPlan(c2)];
+  }
+
+  function nextGeneration() {
+    const children = [];
+    while (children.length < POP) children.push(...breed(tournament(), tournament()));
+    const pool = hero.pop.concat(children.slice(0, POP));
+    const fronts = nonDominatedSort(pool);
+    const survivors = [];
+    for (const front of fronts) {
+      assignCrowding(front);
+      if (survivors.length + front.length <= POP) {
+        survivors.push(...front);
+      } else {
+        front.sort((a, b) => b.cd - a.cd);
+        survivors.push(...front.slice(0, POP - survivors.length));
+        break;
+      }
+    }
+    hero.pop = survivors;
+    hero.gen++;
+  }
+
+  function currentFronts() {
+    const fronts = nonDominatedSort(hero.pop);
+    fronts.forEach(assignCrowding);
+    return fronts;
+  }
+
+  function kneePoint(front) {
+    const xs = front.map((p) => p.x);
+    const ys = front.map((p) => p.y);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    let best = front[0];
+    let bestDist = Infinity;
+    for (const p of front) {
+      const nx = x1 > x0 ? (p.x - x0) / (x1 - x0) : 0;
+      const ny = y1 > y0 ? (p.y - y0) / (y1 - y0) : 0;
+      const d = Math.hypot(nx, ny);
+      if (d < bestDist) { bestDist = d; best = p; }
+    }
+    return best;
+  }
+
+  function computeBounds() {
+    const samples = [];
+    for (let i = 0; i < 300; i++) samples.push(newPlan(randomGenes()));
+    samples.push(newPlan(new Array(TASKS).fill(4)));
+    const spread = Array.from({ length: TASKS }, (_, j) => j % 4);
+    samples.push(newPlan(spread));
+    const xs = samples.map((p) => p.x);
+    const ys = samples.map((p) => p.y);
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    const px = (x1 - x0) * 0.06;
+    const py = (y1 - y0) * 0.06;
+    return { x0: Math.max(0, x0 - px), x1: x1 + px, y0: Math.max(0, y0 - py), y1: y1 + py };
+  }
+
+  function expandBounds(points) {
+    const b = hero.bounds;
+    for (const p of points) {
+      if (p.x < b.x0) b.x0 = p.x * 0.95;
+      if (p.x > b.x1) b.x1 = p.x * 1.05;
+      if (p.y < b.y0) b.y0 = p.y * 0.95;
+      if (p.y > b.y1) b.y1 = p.y * 1.05;
+    }
+  }
+
+  function drawHero() {
+    const { ctx, w, h } = setupCanvas(hero.canvas);
+    const fronts = currentFronts();
+    expandBounds(hero.pop);
+    drawAxes(ctx, w, h, hero.bounds, "Total energy (J), lower is better", "Total delay (s), lower is better", true);
+    const map = makeMapper(w, h, hero.bounds);
+
+    const tracePath = (pts, color, dashed, width) => {
+      const sorted = [...pts].sort((a, b) => a.x - b.x);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.setLineDash(dashed ? [6, 5] : []);
+      ctx.beginPath();
+      sorted.forEach((p, i) => {
+        const [x, y] = map(p.x, p.y);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      ctx.setLineDash([]);
+    };
+
+    if (hero.gen0Front.length > 1) tracePath(hero.gen0Front, cssVar("--muted"), true, 1.5);
+    for (let r = fronts.length - 1; r >= 0; r--) {
+      for (const p of fronts[r]) {
+        const [x, y] = map(p.x, p.y);
+        dot(ctx, x, y, r === 0 ? 5 : 4, frontColor(r));
+      }
+    }
+    const front1 = fronts[0];
+    if (front1.length > 1) tracePath(front1, cssVar("--f1"), false, 2);
+    const knee = kneePoint(front1);
+    const [kx, ky] = map(knee.x, knee.y);
+    ctx.strokeStyle = cssVar("--ink");
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(kx, ky, 10, 0, Math.PI * 2);
+    ctx.stroke();
+
+    document.getElementById("sGen").textContent = hero.gen;
+    document.getElementById("sFront").textContent = front1.length;
+    document.getElementById("sE").textContent = Math.min(...front1.map((p) => p.x)).toFixed(2);
+    document.getElementById("sD").textContent = Math.round(Math.min(...front1.map((p) => p.y)) * 1000);
+    renderGenes(document.getElementById("kneeGenes"), knee.genes, false);
+  }
+
+  function renderGenes(container, genes, showLabels, fromA, flashIndex) {
+    container.replaceChildren(...genes.map((g, i) => {
+      const cell = document.createElement("div");
+      cell.className = "gene";
+      if (fromA && fromA[i]) cell.classList.add("fromA");
+      if (flashIndex === i) cell.classList.add("flash");
+      cell.style.background = cssVar(NODE_VARS[g]);
+      cell.title = `Task ${i + 1}: ${g === 4 ? "cloud" : "fog " + (g + 1)}`;
+      if (showLabels) cell.textContent = String(g + 1);
+      return cell;
+    }));
+  }
+
+  function heroTick() {
+    if (hero.gen >= MAX_GEN) { setRunning(false); return; }
+    nextGeneration();
+    drawHero();
+  }
+
+  function setRunning(on) {
+    hero.running = on;
+    clearInterval(hero.timer);
+    if (on) hero.timer = setInterval(heroTick, 180);
+    const btn = document.getElementById("hPlay");
+    btn.textContent = hero.gen >= MAX_GEN ? "Finished" : on ? "Pause" : "Play";
+    btn.disabled = hero.gen >= MAX_GEN;
+  }
+
+  function resetHero(seed) {
+    hero.rand = makeRng(seed);
+    hero.tasks = makeTasks(hero.rand);
+    hero.bounds = computeBounds();
+    hero.pop = Array.from({ length: POP }, () => newPlan(randomGenes()));
+    hero.gen = 0;
+    hero.gen0Front = nonDominatedSort(hero.pop)[0].map((p) => ({ x: p.x, y: p.y }));
+    drawHero();
+    setRunning(!reduceMotion);
+  }
+
+  document.getElementById("hPlay").addEventListener("click", () => setRunning(!hero.running));
+  document.getElementById("hStep").addEventListener("click", () => {
+    setRunning(false);
+    if (hero.gen < MAX_GEN) { nextGeneration(); drawHero(); }
+    setRunning(false);
+  });
+  document.getElementById("hReset").addEventListener("click", () => resetHero(Math.floor(Math.random() * 1e9)));
+
+  // ---------- Dominance demo ----------
+
+  const domState = { points: [], selected: null, canvas: document.getElementById("dom") };
+  (() => {
+    const r = makeRng(11);
+    for (let i = 0; i < 16; i++) domState.points.push({ x: 0.08 + r() * 0.84, y: 0.08 + r() * 0.84 });
+  })();
+  const UNIT = { x0: 0, x1: 1, y0: 0, y1: 1 };
+
+  function drawDom() {
+    const { ctx, w, h } = setupCanvas(domState.canvas);
+    drawAxes(ctx, w, h, UNIT, "Energy", "Delay", false);
+    const map = makeMapper(w, h, UNIT);
+    const sel = domState.selected;
+    if (sel) {
+      const [sx, sy] = map(sel.x, sel.y);
+      ctx.globalAlpha = 0.12;
+      ctx.fillStyle = cssVar("--bad");
+      ctx.fillRect(sx, PAD.t, w - PAD.r - sx, sy - PAD.t);
+      ctx.fillStyle = cssVar("--good");
+      ctx.fillRect(PAD.l, sy, sx - PAD.l, h - PAD.b - sy);
+      ctx.globalAlpha = 1;
+    }
+    let beats = 0, beaten = 0;
+    for (const p of domState.points) {
+      let color = cssVar("--muted");
+      if (sel && p !== sel) {
+        if (dominates(sel, p)) { color = cssVar("--bad"); beats++; }
+        else if (dominates(p, sel)) { color = cssVar("--good"); beaten++; }
+      }
+      const [x, y] = map(p.x, p.y);
+      dot(ctx, x, y, p === sel ? 8 : 6, p === sel ? cssVar("--ink") : color);
+    }
+    if (sel) {
+      const ties = domState.points.length - 1 - beats - beaten;
+      document.getElementById("domText").textContent = beaten === 0
+        ? `Nobody beats this plan: it is on the Pareto front. It beats ${beats}, and ${ties} are trade-offs.`
+        : `This plan beats ${beats}, is beaten by ${beaten}, and ${ties} are trade-offs. It is not on the front.`;
+    }
+  }
+
+  function nearest(points, canvas, event, bounds) {
+    const rect = canvas.getBoundingClientRect();
+    const mx = event.clientX - rect.left;
+    const my = event.clientY - rect.top;
+    const map = makeMapper(rect.width, rect.height, bounds);
+    let best = null, bestD = 36;
+    for (const p of points) {
+      const [x, y] = map(p.x, p.y);
+      const d = Math.hypot(x - mx, y - my);
+      if (d < bestD) { bestD = d; best = p; }
+    }
+    return best;
+  }
+
+  domState.canvas.addEventListener("click", (e) => {
+    const p = nearest(domState.points, domState.canvas, e, UNIT);
+    if (p) { domState.selected = p; drawDom(); }
+  });
+
+  // ---------- Chromosome demo ----------
+
+  const chrom = { rand: makeRng(5), a: [], b: [], child: [], fromA: [] };
+  const GENE_COUNT = 12;
+
+  function chromNewParents() {
+    chrom.a = Array.from({ length: GENE_COUNT }, () => Math.floor(chrom.rand() * NODES));
+    chrom.b = Array.from({ length: GENE_COUNT }, () => Math.floor(chrom.rand() * NODES));
+    chrom.child = [...chrom.a];
+    chrom.fromA = new Array(GENE_COUNT).fill(true);
+    renderChrom();
+    document.getElementById("cText").textContent = "Numbers are node IDs: 1 to 4 are fog nodes, 5 is the cloud.";
+  }
+
+  function renderChrom(flashIndex) {
+    renderGenes(document.getElementById("cA"), chrom.a, true);
+    renderGenes(document.getElementById("cB"), chrom.b, true);
+    renderGenes(document.getElementById("cC"), chrom.child, true, chrom.fromA, flashIndex);
+  }
+
+  document.getElementById("cCross").addEventListener("click", () => {
+    chrom.fromA = Array.from({ length: GENE_COUNT }, () => chrom.rand() < 0.5);
+    chrom.child = chrom.fromA.map((takeA, i) => (takeA ? chrom.a[i] : chrom.b[i]));
+    renderChrom();
+    const count = chrom.fromA.filter(Boolean).length;
+    document.getElementById("cText").textContent = `The child took ${count} genes from parent A and ${GENE_COUNT - count} from parent B.`;
+  });
+
+  document.getElementById("cMut").addEventListener("click", () => {
+    const i = Math.floor(chrom.rand() * GENE_COUNT);
+    const old = chrom.child[i];
+    let next = old;
+    while (next === old) next = Math.floor(chrom.rand() * NODES);
+    chrom.child[i] = next;
+    renderChrom(i);
+    const name = (g) => (g === 4 ? "the cloud" : `fog ${g + 1}`);
+    document.getElementById("cText").textContent = `Task ${i + 1} moved from ${name(old)} to ${name(next)}.`;
+    setTimeout(() => renderChrom(), reduceMotion ? 0 : 600);
+  });
+
+  document.getElementById("cNew").addEventListener("click", chromNewParents);
+
+  // ---------- Sorting demo ----------
+
+  const sortState = { points: [], fronts: [], revealed: 0, canvas: document.getElementById("sort") };
+  (() => {
+    const r = makeRng(23);
+    for (let i = 0; i < 24; i++) {
+      const t = r();
+      const base = 0.12 + 0.7 * (1 - t) * (1 - t);
+      sortState.points.push({ x: 0.08 + t * 0.84, y: Math.min(0.94, base + r() * 0.55) });
+    }
+    sortState.fronts = nonDominatedSort(sortState.points);
+  })();
+
+  function drawSort() {
+    const { ctx, w, h } = setupCanvas(sortState.canvas);
+    drawAxes(ctx, w, h, UNIT, "Energy", "Delay", false);
+    const map = makeMapper(w, h, UNIT);
+    sortState.fronts.forEach((front, r) => {
+      const shown = r < sortState.revealed;
+      if (shown && front.length > 1) {
+        const sorted = [...front].sort((a, b) => a.x - b.x);
+        ctx.strokeStyle = frontColor(r);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        sorted.forEach((p, i) => {
+          const [x, y] = map(p.x, p.y);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+      }
+      for (const p of front) {
+        const [x, y] = map(p.x, p.y);
+        if (shown) dot(ctx, x, y, 6, frontColor(r));
+        else {
+          ctx.strokeStyle = cssVar("--muted");
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(x, y, 5.5, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    });
+    const total = sortState.fronts.length;
+    const peel = document.getElementById("sPeel");
+    peel.disabled = sortState.revealed >= total;
+    const txt = document.getElementById("sortText");
+    if (sortState.revealed === 0) txt.textContent = "All plans are unsorted.";
+    else if (sortState.revealed >= total) txt.textContent = `Done: ${total} fronts. Every plan now has a rank.`;
+    else {
+      const n = sortState.fronts[sortState.revealed - 1].length;
+      txt.textContent = `Front ${sortState.revealed}: ${n} plans that nobody among the remaining plans beats.`;
+    }
+  }
+
+  document.getElementById("sPeel").addEventListener("click", () => {
+    if (sortState.revealed < sortState.fronts.length) sortState.revealed++;
+    drawSort();
+  });
+  document.getElementById("sReset").addEventListener("click", () => { sortState.revealed = 0; drawSort(); });
+
+  // ---------- Crowding demo ----------
+
+  const crowdState = { points: [], selected: null, canvas: document.getElementById("crowd") };
+  (() => {
+    const xs = [0.1, 0.16, 0.2, 0.32, 0.47, 0.52, 0.56, 0.74, 0.9];
+    for (const x of xs) crowdState.points.push({ x, y: 0.06 + 0.075 / x });
+    assignCrowding(crowdState.points);
+  })();
+
+  function drawCrowd() {
+    const { ctx, w, h } = setupCanvas(crowdState.canvas);
+    drawAxes(ctx, w, h, UNIT, "Energy", "Delay", false);
+    const map = makeMapper(w, h, UNIT);
+    const sorted = [...crowdState.points].sort((a, b) => a.x - b.x);
+    ctx.strokeStyle = cssVar("--f1");
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    sorted.forEach((p, i) => {
+      const [x, y] = map(p.x, p.y);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    const sel = crowdState.selected;
+    const idx = sel ? sorted.indexOf(sel) : -1;
+    if (idx > 0 && idx < sorted.length - 1) {
+      const [x1, y1] = map(sorted[idx - 1].x, sorted[idx - 1].y);
+      const [x2, y2] = map(sorted[idx + 1].x, sorted[idx + 1].y);
+      ctx.globalAlpha = 0.15;
+      ctx.fillStyle = cssVar("--f2");
+      ctx.fillRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = cssVar("--f2");
+      ctx.setLineDash([5, 4]);
+      ctx.strokeRect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1));
+      ctx.setLineDash([]);
+    }
+    for (const p of sorted) {
+      const [x, y] = map(p.x, p.y);
+      dot(ctx, x, y, p === sel ? 8 : 6, p === sel ? cssVar("--ink") : cssVar("--f1"));
+    }
+    const txt = document.getElementById("crowdText");
+    if (!sel) return;
+    txt.textContent = !Number.isFinite(sel.cd)
+      ? "An end point of the front: crowding distance is infinity, so it always survives."
+      : `Crowding distance ${sel.cd.toFixed(2)}. ${sel.cd > 0.5 ? "Lonely: valuable for diversity." : "Crowded: first to go if the front must be cut."}`;
+  }
+
+  crowdState.canvas.addEventListener("click", (e) => {
+    const p = nearest(crowdState.points, crowdState.canvas, e, UNIT);
+    if (p) { crowdState.selected = p; drawCrowd(); }
+  });
+
+  // ---------- Boot and redraw on resize or theme change ----------
+
+  function redrawAll() {
+    drawHero();
+    drawDom();
+    drawSort();
+    drawCrowd();
+    renderChrom();
+  }
+
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(redrawAll, 150);
+  });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redrawAll);
+  new MutationObserver(redrawAll).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  chromNewParents();
+  resetHero(42);
+  drawDom();
+  drawSort();
+  drawCrowd();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(redrawAll);
+})();
+</script>
+</body>
+</html>

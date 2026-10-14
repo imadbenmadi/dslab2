@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reinforcement learning from zero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #F2F4F6;
+  --panel: #FFFFFF;
+  --ink: #17202B;
+  --muted: #5B6675;
+  --line: #D5DAE0;
+  --soft: #E8ECF0;
+  --f1: #0E8C7F;
+  --f2: #C98A12;
+  --f3: #7056C4;
+  --rest: #A9B1BB;
+  --bad: #C2413A;
+  --good: #2F8F4E;
+  --fog: #3B7DD8;
+  --cloud: #7C8794;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12171D; --panel: #1A2129; --ink: #E7ECF1; --muted: #9AA6B2; --line: #2A333D; --soft: #222B34;
+    --f1: #3CC2B1; --f2: #E3A93A; --f3: #9C86E6; --rest: #56606B; --bad: #E0645C; --good: #5CC27E;
+    --fog: #6BA3F0; --cloud: #9AA6B2;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12171D; --panel: #1A2129; --ink: #E7ECF1; --muted: #9AA6B2; --line: #2A333D; --soft: #222B34;
+  --f1: #3CC2B1; --f2: #E3A93A; --f3: #9C86E6; --rest: #56606B; --bad: #E0645C; --good: #5CC27E;
+  --fog: #6BA3F0; --cloud: #9AA6B2;
+}
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 1.0625rem;
+  line-height: 1.65;
+  -webkit-text-size-adjust: 100%;
+}
+.shell { max-width: 900px; margin: 0 auto; padding: 1.5rem 1rem 3rem; }
+.topbar { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.5rem 1rem; }
+.topbar h1 { font-family: var(--display); font-size: 1.15rem; font-weight: 700; margin: 0; }
+.counter { font-family: var(--display); color: var(--muted); font-size: 0.95rem; }
+.progress { display: flex; gap: 3px; margin: 0.9rem 0 1.5rem; }
+.progress button { flex: 1; height: 8px; min-width: 0; padding: 0; border-radius: 4px; border: none; background: var(--line); cursor: pointer; }
+.progress button.done { background: var(--rest); }
+.progress button.current { background: var(--f1); }
+.progress button:focus-visible { outline: 3px solid var(--f1); outline-offset: 2px; }
+.part { font-family: var(--display); font-size: 0.85rem; color: var(--f1); margin: 0 0 0.2rem; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: clamp(1.1rem, 3vw, 2rem); }
+.card h2 { font-family: var(--display); font-size: clamp(1.45rem, 3.2vw, 2rem); line-height: 1.15; margin: 0 0 0.3rem; letter-spacing: -0.01em; }
+.where { font-family: var(--display); font-size: 0.9rem; color: var(--muted); margin: 0 0 1rem; }
+.card p { margin: 0.8rem 0; max-width: 68ch; }
+.card ul, .card ol { max-width: 68ch; padding-left: 1.3rem; }
+.card li { margin: 0.4rem 0; }
+.nav { display: flex; justify-content: space-between; gap: 0.75rem; margin-top: 1.25rem; }
+button.btn {
+  font-family: var(--display); font-size: 0.95rem; font-weight: 500;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+  padding: 0.55rem 1.05rem; border-radius: 999px; cursor: pointer;
+}
+button.btn.primary { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+button.btn.fog { background: var(--fog); color: #fff; border-color: var(--fog); }
+button.btn.cloud { background: var(--cloud); color: #fff; border-color: var(--cloud); }
+button.btn:disabled { opacity: 0.4; cursor: default; }
+button.btn:focus-visible { outline: 3px solid var(--f1); outline-offset: 2px; }
+.row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.8rem 0; }
+.note { background: var(--soft); border-radius: 10px; padding: 0.75rem 1rem; margin: 1rem 0; max-width: 68ch; }
+.note p { margin: 0.3rem 0; }
+.math { font-family: var(--display); background: var(--soft); border-radius: 8px; padding: 0.55rem 0.9rem; margin: 0.5rem 0; display: block; max-width: 100%; overflow-x: auto; white-space: nowrap; }
+.table-wrap { overflow-x: auto; margin: 1rem 0; }
+table { border-collapse: collapse; font-size: 0.95rem; min-width: 100%; }
+th, td { padding: 0.45rem 0.7rem; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+th { font-family: var(--display); font-weight: 500; color: var(--muted); font-size: 0.88rem; }
+td.num { font-family: var(--display); }
+td.best { background: color-mix(in srgb, var(--f1) 18%, transparent); font-weight: 600; }
+td.wrap { white-space: normal; min-width: 14rem; }
+.ok { color: var(--good); font-family: var(--display); font-weight: 700; }
+.no { color: var(--bad); font-family: var(--display); font-weight: 700; }
+dl.gloss { display: grid; grid-template-columns: minmax(7rem, max-content) 1fr; gap: 0.5rem 1.2rem; margin: 1rem 0; max-width: 68ch; }
+dl.gloss dt { font-family: var(--display); font-weight: 700; }
+dl.gloss dd { margin: 0; }
+.verdict { font-family: var(--display); font-weight: 700; font-size: 1.1rem; margin: 0.7rem 0; }
+label.inline { font-family: var(--display); font-size: 0.95rem; color: var(--muted); }
+input[type="range"] { width: min(260px, 60vw); accent-color: var(--f1); }
+canvas { display: block; width: 100%; margin: 0.8rem 0 0.2rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 0.9rem; font-family: var(--display); font-size: 0.85rem; color: var(--muted); margin-top: 0.4rem; }
+.legend i { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 50%; margin-right: 0.35rem; vertical-align: -0.1rem; }
+.stats { display: flex; flex-wrap: wrap; gap: 1.5rem; margin: 0.8rem 0; font-family: var(--display); }
+.stat b { display: block; font-size: 1.4rem; font-weight: 700; }
+.stat span { font-size: 0.85rem; color: var(--muted); }
+.queue { display: inline-flex; gap: 6px; vertical-align: middle; }
+.slot { width: 2.4rem; height: 2.4rem; border-radius: 8px; border: 2px dashed var(--line); }
+.slot.full { background: var(--fog); border: 2px solid var(--fog); }
+.log { font-family: var(--display); font-size: 0.92rem; color: var(--muted); min-height: 7.5em; }
+.log div:first-child { color: var(--ink); }
+svg.dg { width: 100%; height: auto; display: block; margin: 1rem 0; }
+svg.dg rect { fill: var(--soft); stroke: var(--line); stroke-width: 1.5; }
+svg.dg rect.hl { fill: color-mix(in srgb, var(--f1) 16%, var(--panel)); stroke: var(--f1); }
+svg.dg text { fill: var(--ink); font-family: var(--display); font-size: 13px; }
+svg.dg text.lbl { fill: var(--muted); font-size: 12px; }
+svg.dg path { fill: none; stroke: var(--muted); stroke-width: 1.6; }
+svg.dg path.dash { stroke-dasharray: 5 4; }
+svg.dg marker path { fill: var(--muted); stroke: none; }
+@media (max-width: 560px) {
+  dl.gloss { grid-template-columns: 1fr; gap: 0.1rem; }
+  dl.gloss dd { margin-bottom: 0.6rem; }
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <h1>Reinforcement learning from zero</h1>
+    <span class="counter" id="counter"></span>
+  </div>
+  <nav class="progress" id="progress" aria-label="Lesson steps"></nav>
+  <article class="card" id="card" aria-live="polite"></article>
+  <div class="nav">
+    <button class="btn" id="back">Back</button>
+    <button class="btn primary" id="next">Next</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  // ================= The toy world used through the whole lesson =================
+  // One fog node with a queue of 0..3 tasks. Every step one task arrives and the agent
+  // sends it to the fog (cost 1 + queue length, and the queue grows by one) or to the
+  // cloud (fixed cost 3). After each decision the fog finishes one queued task with
+  // probability 0.5. Rewards are negative costs.
+  const GAMMA = 0.9;
+  const P_DONE = 0.5;
+  const QMAX = 3;
+  const STATES = [0, 1, 2, 3];
+  const ACTS = ["F", "C"];
+  const ANAME = { F: "Fog", C: "Cloud" };
+
+  const reward = (q, a) => (a === "F" ? -(1 + q) : -3);
+  const afterAction = (q, a) => (a === "F" ? Math.min(q + 1, QMAX) : q);
+  const nextDist = (q, a) => {
+    const q1 = afterAction(q, a);
+    return q1 === 0 ? [[0, 1]] : [[q1 - 1, P_DONE], [q1, 1 - P_DONE]];
+  };
+  function sampleStep(q, a, rand) {
+    let q1 = afterAction(q, a);
+    if (q1 > 0 && rand() < P_DONE) q1--;
+    return [reward(q, a), q1];
+  }
+
+  function makeRng(seed) {
+    let s = seed >>> 0;
+    return () => {
+      s = (s + 0x6D2B79F5) >>> 0;
+      let t = s;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function viStep(V) {
+    const Q = STATES.map((q) => {
+      const row = {};
+      for (const a of ACTS) row[a] = reward(q, a) + GAMMA * nextDist(q, a).reduce((s, [n, p]) => s + p * V[n], 0);
+      return row;
+    });
+    return { Q, V: Q.map((r) => Math.max(r.F, r.C)) };
+  }
+  const OPT = (() => {
+    let V = [0, 0, 0, 0], Q = null;
+    for (let i = 0; i < 1000; i++) ({ Q, V } = viStep(V));
+    return { Q, V };
+  })();
+  const bestAct = (row) => (row.F >= row.C ? "F" : "C");
+  const optPolicy = (q) => bestAct(OPT.Q[q]);
+
+  function evaluatePolicy(pi) {
+    let V = [0, 0, 0, 0];
+    for (let i = 0; i < 1000; i++) {
+      V = STATES.map((q) => reward(q, pi(q)) + GAMMA * nextDist(q, pi(q)).reduce((s, [n, p]) => s + p * V[n], 0));
+    }
+    return V;
+  }
+  function averageCost(pi, steps, seed) {
+    const rand = makeRng(seed);
+    let q = 0, total = 0;
+    for (let i = 0; i < steps; i++) {
+      const [r, q1] = sampleStep(q, pi(q), rand);
+      total -= r;
+      q = q1;
+    }
+    return total / steps;
+  }
+
+  const POLICIES = [
+    { name: "Always fog", pi: () => "F" },
+    { name: "Always cloud", pi: () => "C" },
+    { name: "Greedy: cheapest right now", pi: (q) => (reward(q, "F") > reward(q, "C") ? "F" : "C") },
+    { name: "Optimal (what RL learns)", pi: optPolicy },
+  ];
+
+  // ================= Rendering helpers =================
+  const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const f2 = (x) => (Math.abs(x) < 0.005 ? "0.00" : x.toFixed(2));
+  const policyString = (pi) => STATES.map((q) => `${q}: ${ANAME[pi(q)]}`).join(" · ");
+
+  function qTableHtml(Q, extra = {}) {
+    const head = `<tr><th>State (queue)</th><th>Q(s, Fog)</th><th>Q(s, Cloud)</th><th>Best action</th>${extra.compare ? "<th>Optimal</th>" : ""}</tr>`;
+    const body = STATES.map((q) => {
+      const row = Q[q];
+      const best = bestAct(row);
+      const same = row.F === row.C;
+      const cell = (a) => `<td class="num${!same && best === a ? " best" : ""}">${f2(row[a])}</td>`;
+      let cmp = "";
+      if (extra.compare) {
+        const ok = !same && best === optPolicy(q);
+        cmp = `<td class="${ok ? "ok" : "no"}">${ANAME[optPolicy(q)]} ${ok ? "✓" : "✗"}</td>`;
+      }
+      return `<tr><td>${q}</td>${cell("F")}${cell("C")}<td>${same ? "tie" : ANAME[best]}</td>${cmp}</tr>`;
+    }).join("");
+    return `<div class="table-wrap"><table><thead>${head}</thead><tbody>${body}</tbody></table></div>`;
+  }
+
+  // series: [{pts:[[x,y]], color, dashed}]
+  function drawLines(canvas, opts) {
+    const width = canvas.parentElement.clientWidth;
+    const height = Math.round(Math.min(320, width * (width < 560 ? 0.75 : 0.45)));
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    canvas.style.height = height + "px";
+    const ctx = canvas.getContext("2d");
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const pad = { l: 50, r: 14, t: 12, b: 40 };
+    const { x0, x1, y0, y1 } = opts;
+    const X = (v) => pad.l + ((v - x0) / (x1 - x0)) * (width - pad.l - pad.r);
+    const Y = (v) => height - pad.b - ((v - y0) / (y1 - y0)) * (height - pad.t - pad.b);
+    ctx.strokeStyle = cssVar("--line");
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(pad.l, pad.t);
+    ctx.lineTo(pad.l, height - pad.b);
+    ctx.lineTo(width - pad.r, height - pad.b);
+    ctx.stroke();
+    ctx.fillStyle = cssVar("--muted");
+    ctx.font = "12px 'Bricolage Grotesque', system-ui, sans-serif";
+    ctx.textAlign = "center";
+    for (const v of opts.xTicks) ctx.fillText(opts.xFmt ? opts.xFmt(v) : String(v), X(v), height - pad.b + 15);
+    ctx.fillText(opts.xLabel, pad.l + (width - pad.l - pad.r) / 2, height - 6);
+    ctx.textAlign = "right";
+    for (const v of opts.yTicks) ctx.fillText(opts.yFmt ? opts.yFmt(v) : String(v), pad.l - 6, Y(v) + 4);
+    ctx.save();
+    ctx.translate(13, pad.t + (height - pad.t - pad.b) / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = "center";
+    ctx.fillText(opts.yLabel, 0, 0);
+    ctx.restore();
+    for (const s of opts.series) {
+      if (!s.pts.length) continue;
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.width || 2;
+      ctx.setLineDash(s.dashed ? [6, 5] : []);
+      ctx.beginPath();
+      s.pts.forEach(([x, y], i) => (i ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y))));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    for (const d of opts.dots || []) {
+      ctx.fillStyle = d.color;
+      ctx.beginPath();
+      ctx.arc(X(d.x), Y(d.y), 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // ================= The lesson =================
+  const STEPS = [
+    // ---------------- Part 1: the idea ----------------
+    {
+      part: "Part 1 · The idea",
+      title: "What reinforcement learning is",
+      where: "Start here",
+      html: () => `
+        <p>Reinforcement learning (RL) is learning by trial and error. A decision maker, the <strong>agent</strong>, tries actions, sees what happens, gets a score, and slowly learns which actions lead to good scores in which situations.</p>
+        <p>Nobody gives it the right answers. It only gets a number after each decision saying how good that was. That is the difference from normal machine learning, where every example comes with its correct label.</p>
+        <h3>Why PCNME needs it next to NSGA-II</h3>
+        <div class="table-wrap"><table>
+          <thead><tr><th></th><th>NSGA-II</th><th>Reinforcement learning</th></tr></thead>
+          <tbody>
+            <tr><td>Output</td><td class="wrap">A plan for one known batch of tasks</td><td class="wrap">A rule (policy) that decides for any situation</td></tr>
+            <tr><td>Needs</td><td class="wrap">All tasks and costs known in advance</td><td class="wrap">Only the current situation</td></tr>
+            <tr><td>Cost of one decision</td><td class="wrap">Thousands of evaluations</td><td class="wrap">One pass through a neural network</td></tr>
+            <tr><td>Role in PCNME</td><td class="wrap">Offline teacher</td><td class="wrap">Online decision maker</td></tr>
+          </tbody>
+        </table></div>
+        <p>A car cannot wait for a genetic algorithm while it drives. So PCNME uses NSGA-II slowly and offline to produce good examples, and an RL agent that decides instantly online. This lesson builds that agent from zero.</p>`,
+    },
+    {
+      part: "Part 1 · The idea",
+      title: "Our toy world",
+      where: "One small problem we will use until the end",
+      html: () => `
+        <p>Every concept in this lesson is shown on one tiny offloading problem. It is small enough to compute by hand, but it already has the trap that makes RL necessary.</p>
+        <ul>
+          <li>There is <strong>one fog node</strong> with a waiting line, the <strong>queue</strong>, holding 0 to 3 tasks.</li>
+          <li>Every step, <strong>one new task arrives</strong>. You send it to the <strong>Fog</strong> or to the <strong>Cloud</strong>.</li>
+          <li><strong>Fog:</strong> the task waits behind the queue, so its delay is <strong>1 + queue length</strong>. It joins the queue, so the queue grows by 1 (at most 3).</li>
+          <li><strong>Cloud:</strong> always a delay of <strong>3</strong>, whatever happens. The queue does not change.</li>
+          <li>After your decision, the fog finishes one queued task with probability <strong>50%</strong>.</li>
+        </ul>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Queue length</th><th>Fog delay</th><th>Cloud delay</th></tr></thead>
+          <tbody>${STATES.map((q) => `<tr><td>${q}</td><td class="num">${1 + q}</td><td class="num">3</td></tr>`).join("")}</tbody>
+        </table></div>
+        <p>The goal: <strong>the lowest total delay over time</strong>, not just for the next task.</p>
+        <div class="note"><p>Look at queue length 1. Fog costs 2, cloud costs 3, so fog looks better. But fog makes the queue longer, and that makes the <em>next</em> tasks slower. Keep this in mind: it is the whole point of RL.</p></div>`,
+    },
+    {
+      part: "Part 1 · The idea",
+      title: "Play it yourself",
+      where: "You are the agent",
+      html: () => `
+        <p>Make the decisions yourself for 20 or 30 tasks. Try to keep the average delay per task low.</p>
+        <div class="row"><span class="label inline">Fog queue:</span><span class="queue" id="slots"></span></div>
+        <div class="row">
+          <button class="btn fog" id="pf">Send to Fog</button>
+          <button class="btn cloud" id="pc">Send to Cloud</button>
+          <button class="btn" id="pr">Start over</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="n">0</b><span>tasks sent</span></div>
+          <div class="stat"><b id="avg">–</b><span>your average delay per task</span></div>
+        </div>
+        <div class="log" id="log"></div>
+        <p>The best possible long-run average in this world is <strong>2.0</strong> per task. If you got close, you found the trick by intuition. RL finds it automatically, and in problems far too big for intuition.</p>
+        <div class="note"><p>What you just did is exactly the RL loop: <strong>look</strong> at the situation, <strong>act</strong>, <strong>receive</strong> a cost, <strong>see</strong> the new situation, repeat.</p></div>`,
+      mount(root) {
+        const rand = makeRng(Date.now() >>> 0);
+        let q = 0, n = 0, total = 0;
+        const lines = [];
+        const render = () => {
+          root.querySelector("#slots").innerHTML = Array.from({ length: QMAX }, (_, i) => `<span class="slot${i < q ? " full" : ""}"></span>`).join("") + `<span class="label inline">&nbsp;${q} waiting</span>`;
+          root.querySelector("#n").textContent = n;
+          root.querySelector("#avg").textContent = n ? (total / n).toFixed(2) : "–";
+          root.querySelector("#log").innerHTML = lines.slice(0, 5).map((l) => `<div>${l}</div>`).join("");
+        };
+        const act = (a) => {
+          const before = q;
+          const [r, q1] = sampleStep(q, a, rand);
+          n++;
+          total -= r;
+          q = q1;
+          lines.unshift(`Task ${n}: queue ${before}, sent to ${ANAME[a]}, delay ${-r}. Queue now ${q}.`);
+          render();
+        };
+        root.querySelector("#pf").addEventListener("click", () => act("F"));
+        root.querySelector("#pc").addEventListener("click", () => act("C"));
+        root.querySelector("#pr").addEventListener("click", () => { q = 0; n = 0; total = 0; lines.length = 0; render(); });
+        render();
+      },
+    },
+    {
+      part: "Part 1 · The idea",
+      title: "The words and symbols",
+      where: "Vocabulary used in every RL paper",
+      html: () => `
+        <p>Do not memorise this now. Each word comes back with real numbers in the next steps.</p>
+        <dl class="gloss">
+          <dt>Agent</dt><dd>The decision maker. In our toy: you. In PCNME: the DQN at the gateway.</dd>
+          <dt>Environment</dt><dd>Everything the agent does not control: tasks, queues, cars, the cloud.</dd>
+          <dt>State s</dt><dd>What the agent sees before deciding. Toy: the queue length (0 to 3).</dd>
+          <dt>Action a</dt><dd>The decision. Toy: Fog or Cloud.</dd>
+          <dt>Reward r</dt><dd>The score after one action. Higher is better, so a cost is written as a negative reward: delay 2 gives r = −2.</dd>
+          <dt>Next state s′</dt><dd>The situation after the action.</dd>
+          <dt>Step t</dt><dd>One look–act–reward cycle. s<sub>t</sub> is the state at step t.</dd>
+          <dt>Episode</dt><dd>One complete run from a start to an end, for example one simulated hour of traffic.</dd>
+          <dt>Transition T</dt><dd>The rules of the world: the probability of each next state after an action.</dd>
+          <dt>Policy π</dt><dd>The agent's rule: which action in which state. π(s) = a.</dd>
+          <dt>Return G</dt><dd>The total reward collected from now on.</dd>
+          <dt>Discount γ</dt><dd>A number between 0 and 1 saying how much future rewards count. We use γ = 0.9.</dd>
+          <dt>Value V(s)</dt><dd>The expected return starting from state s.</dd>
+          <dt>Q-value Q(s, a)</dt><dd>The expected return if you take action a in state s, then behave well afterwards.</dd>
+          <dt>* (star)</dt><dd>"Optimal". V*, Q*, π* are the best possible ones.</dd>
+          <dt>Learning rate α</dt><dd>How big each learning update is.</dd>
+          <dt>Exploration ε</dt><dd>How often the agent tries a random action on purpose.</dd>
+          <dt>θ (theta)</dt><dd>The weights of a neural network. θ⁻ is a frozen copy (target network).</dd>
+          <dt>TD error δ</dt><dd>The surprise: how wrong the current estimate was.</dd>
+          <dt>Advantage A(s, a)</dt><dd>How much better action a is than the average action in s.</dd>
+        </dl>`,
+    },
+    {
+      part: "Part 1 · The idea",
+      title: "The formal name: an MDP",
+      where: "What the VFC paper calls ⟨S, A, T, R, γ⟩",
+      html: () => {
+        const rows = STATES.flatMap((q) => ACTS.map((a) => {
+          const nd = nextDist(q, a).map(([n, p]) => `queue ${n} (${Math.round(p * 100)}%)`).join(", ");
+          return `<tr><td>${q}</td><td>${ANAME[a]}</td><td class="num">${reward(q, a)}</td><td>${nd}</td></tr>`;
+        })).join("");
+        return `
+          <p>Papers describe the problem as a <strong>Markov Decision Process (MDP)</strong>, written as five things ⟨S, A, T, R, γ⟩:</p>
+          <ul>
+            <li><strong>S</strong>, the states: {0, 1, 2, 3}.</li>
+            <li><strong>A</strong>, the actions: {Fog, Cloud}.</li>
+            <li><strong>T</strong>, the transitions: where you can land after each action.</li>
+            <li><strong>R</strong>, the rewards: what each action pays.</li>
+            <li><strong>γ</strong>, the discount: 0.9.</li>
+          </ul>
+          <p>Here is the complete T and R of our toy:</p>
+          <div class="table-wrap"><table><thead><tr><th>State</th><th>Action</th><th>Reward R</th><th>Next state T</th></tr></thead><tbody>${rows}</tbody></table></div>
+          <p><strong>"Markov"</strong> means: the next state depends only on the current state and action, not on the history. Knowing the queue length now is enough. If it were not enough, the state would be missing information.</p>
+          <div class="note"><p>Section 4 of the VFC paper starts with exactly this tuple, then defines its state space, action space and reward. You now know what each part means.</p></div>`;
+      },
+    },
+    {
+      part: "Part 1 · The idea",
+      title: "Return and the discount factor γ",
+      where: "How future rewards are counted",
+      html: () => `
+        <p>The agent should care about future rewards, not just the next one. The <strong>return</strong> adds them up, but each step further away counts a little less:</p>
+        <span class="math">G = r₀ + γ·r₁ + γ²·r₂ + γ³·r₃ + …</span>
+        <p>Below, a sequence of five rewards. Move γ and watch how much each one counts.</p>
+        <div class="row"><label class="inline" for="g">γ = <b id="gv"></b></label><input type="range" id="g" min="0" max="1" step="0.05" value="0.9"></div>
+        <div id="tbl"></div>
+        <span class="math" id="sum"></span>
+        <ul>
+          <li><strong>γ = 0:</strong> only the next reward matters. The agent becomes greedy.</li>
+          <li><strong>γ near 1:</strong> far-future rewards count almost fully. The agent plans long term.</li>
+        </ul>
+        <div class="note"><p>Why discount at all? Rewards far away are uncertain, and without discounting an endless sum could be infinite. γ = 0.9 to 0.99 is typical.</p></div>`,
+      mount(root) {
+        const rewards = [-1, -2, -3, -3, -3];
+        const update = () => {
+          const g = +root.querySelector("#g").value;
+          root.querySelector("#gv").textContent = g.toFixed(2);
+          const w = rewards.map((_, k) => g ** k);
+          root.querySelector("#tbl").innerHTML = `<div class="table-wrap"><table><thead><tr><th>Step k</th>${rewards.map((_, k) => `<th>${k}</th>`).join("")}</tr></thead><tbody>
+            <tr><td>Reward r<sub>k</sub></td>${rewards.map((r) => `<td class="num">${r}</td>`).join("")}</tr>
+            <tr><td>Weight γ<sup>k</sup></td>${w.map((x) => `<td class="num">${x.toFixed(2)}</td>`).join("")}</tr>
+            <tr><td>Counts as</td>${rewards.map((r, k) => `<td class="num">${(r * w[k]).toFixed(2)}</td>`).join("")}</tr></tbody></table></div>`;
+          const G = rewards.reduce((s, r, k) => s + r * w[k], 0);
+          root.querySelector("#sum").textContent = `G = ${rewards.map((r, k) => (r * w[k]).toFixed(2)).join(" + ")} = ${G.toFixed(2)}`;
+        };
+        root.querySelector("#g").addEventListener("input", update);
+        update();
+      },
+    },
+    {
+      part: "Part 1 · The idea",
+      title: "Policies: the agent's rule",
+      where: "Comparing four possible rules",
+      html: () => {
+        const rows = POLICIES.map((p, i) => {
+          const V = evaluatePolicy(p.pi);
+          const avg = averageCost(p.pi, 100000, 7 + i);
+          return `<tr><td>${p.name}</td><td>${policyString(p.pi)}</td><td class="num">${avg.toFixed(2)}</td><td class="num">${f2(V[0])}</td></tr>`;
+        }).join("");
+        return `
+          <p>A <strong>policy π</strong> is a complete rule: for every state, which action. Our toy has 4 states and 2 actions, so 2⁴ = 16 possible policies. Here are four of them, each run for 100,000 tasks:</p>
+          <div class="table-wrap"><table><thead><tr><th>Policy</th><th>Rule (queue: action)</th><th>Average delay per task</th><th>Return from empty queue, V(0)</th></tr></thead><tbody>${rows}</tbody></table></div>
+          <p>Read the greedy row carefully. Greedy picks whatever is cheapest <em>right now</em>, so at queue 1 it sends to fog (2 is less than 3). That fills the queue, and later tasks pay for it. Its average is 2.5.</p>
+          <p>The optimal policy uses the fog <strong>only when the queue is empty</strong>, even though fog is cheaper at queue 1. It accepts a slightly worse task now to keep the fog fast for later. Average: 2.0.</p>
+          <div class="note"><p>This is what RL is for: decisions whose effect comes later. A greedy rule never sees it. The goal of every RL algorithm in this lesson is to find the optimal policy, without being told it.</p></div>`;
+      },
+    },
+    // ---------------- Part 2: values ----------------
+    {
+      part: "Part 2 · Measuring how good things are",
+      title: "Value V(s) and Q-value Q(s, a)",
+      where: "The two numbers almost every RL method is built on",
+      html: () => `
+        <p>To pick good actions, the agent needs to know how good each situation is. Two numbers do this:</p>
+        <ul>
+          <li><strong>V(s)</strong>, the value of a state: "how much return will I collect from here, behaving well?"</li>
+          <li><strong>Q(s, a)</strong>, the value of an action in a state: "how much return if I do <em>a</em> now, then behave well?"</li>
+        </ul>
+        <p>Here are the true optimal values of our toy (we will compute them ourselves in two steps):</p>
+        ${qTableHtml(OPT.Q)}
+        <p>Once you have Q, choosing is trivial: <strong>pick the action with the highest Q</strong>. The highlighted cells give exactly the optimal policy: Fog at queue 0, Cloud otherwise.</p>
+        <span class="math">π*(s) = arg maxₐ Q*(s, a)          V*(s) = maxₐ Q*(s, a)</span>
+        <p>"arg max" means "the action that gives the maximum", not the maximum itself.</p>
+        <div class="note"><p>All values are negative because all rewards are costs. −19 at queue 0 means: starting from an empty queue, the discounted total delay ahead is 19. Closer to zero is better.</p></div>`,
+    },
+    {
+      part: "Part 2 · Measuring how good things are",
+      title: "The Bellman equation, by hand",
+      where: "The one equation all of RL rests on",
+      html: () => {
+        const V = OPT.V;
+        return `
+          <p>The value of an action = what it pays now + the discounted value of where it leads:</p>
+          <span class="math">Q*(s, a) = R(s, a) + γ · Σ<sub>s′</sub> T(s′ | s, a) · V*(s′)</span>
+          <p>The sum just means: average over the possible next states, weighted by their probability. Let us check the key decision, at <strong>queue 1</strong>, with V*(0) = ${f2(V[0])}, V*(1) = ${f2(V[1])}, V*(2) = ${f2(V[2])}.</p>
+          <p><strong>Fog at queue 1:</strong> reward −2. The queue becomes 2, then drops to 1 (50%) or stays 2 (50%).</p>
+          <span class="math">Q*(1, Fog) = −2 + 0.9 × (0.5 × ${f2(V[1])} + 0.5 × ${f2(V[2])}) = −2 + 0.9 × ${f2(0.5 * V[1] + 0.5 * V[2])} = ${f2(OPT.Q[1].F)}</span>
+          <p><strong>Cloud at queue 1:</strong> reward −3. The queue stays 1, then drops to 0 (50%) or stays 1 (50%).</p>
+          <span class="math">Q*(1, Cloud) = −3 + 0.9 × (0.5 × ${f2(V[0])} + 0.5 × ${f2(V[1])}) = −3 + 0.9 × ${f2(0.5 * V[0] + 0.5 * V[1])} = ${f2(OPT.Q[1].C)}</span>
+          <p>Cloud wins (${f2(OPT.Q[1].C)} is higher than ${f2(OPT.Q[1].F)}) even though it pays 1 more right now. The equation counts the future for us.</p>
+          <div class="note"><p>Notice the circle: V* is defined using V*. The equation is a consistency condition. The next step shows how to solve it.</p></div>`;
+      },
+    },
+    {
+      part: "Part 2 · Measuring how good things are",
+      title: "Solving it: value iteration",
+      where: "When you know the rules of the world",
+      html: () => `
+        <p>Start with all values at 0. Apply the Bellman equation to every state, using the current guesses on the right-hand side. Repeat. Each round, the guesses get closer to the truth.</p>
+        <div class="row">
+          <button class="btn primary" id="one">One round</button>
+          <button class="btn" id="ten">Ten rounds</button>
+          <button class="btn" id="rs">Start over</button>
+        </div>
+        <p class="verdict" id="it"></p>
+        <div id="tbl"></div>
+        <p>Watch the "Best action" column. After round 1 it is just greedy (only the immediate reward counts). After a few rounds, the future starts to count and queue 1 flips to Cloud. The numbers keep moving a little after that, but the policy is already correct.</p>
+        <div class="note"><p>Value iteration needs the full table T. In real offloading nobody gives you exact probabilities for every situation. That is why we need learning from experience, next.</p></div>`,
+      mount(root) {
+        let V = [0, 0, 0, 0], Q = STATES.map(() => ({ F: 0, C: 0 })), k = 0;
+        const render = () => {
+          root.querySelector("#it").textContent = `Round ${k}. Policy: ${STATES.map((q) => (Q[q].F === Q[q].C ? "tie" : ANAME[bestAct(Q[q])])).join(", ")}`;
+          root.querySelector("#tbl").innerHTML = qTableHtml(Q, { compare: true });
+        };
+        const run = (n) => { for (let i = 0; i < n; i++) { ({ Q, V } = viStep(V)); k++; } render(); };
+        root.querySelector("#one").addEventListener("click", () => run(1));
+        root.querySelector("#ten").addEventListener("click", () => run(10));
+        root.querySelector("#rs").addEventListener("click", () => { V = [0, 0, 0, 0]; Q = STATES.map(() => ({ F: 0, C: 0 })); k = 0; render(); });
+        render();
+      },
+    },
+    // ---------------- Part 3: learning from experience ----------------
+    {
+      part: "Part 3 · Learning from experience",
+      title: "Q-learning: one update by hand",
+      where: "Learning without knowing the rules",
+      html: () => `
+        <p>Now the agent does <strong>not</strong> know T. It only lives in the world and sees samples: "I was in s, did a, got r, landed in s′". From each sample it nudges its guess Q(s, a):</p>
+        <span class="math">Q(s, a) ← Q(s, a) + α · [ r + γ · maxₐ′ Q(s′, a′) − Q(s, a) ]</span>
+        <ul>
+          <li><strong>r + γ · maxₐ′ Q(s′, a′)</strong> is the <strong>target</strong>: what this one experience says Q(s, a) should be.</li>
+          <li><strong>target − Q(s, a)</strong> is the <strong>TD error δ</strong>: the surprise.</li>
+          <li><strong>α</strong> (we use 0.1) moves the guess only 10% toward the target, because one sample is noisy.</li>
+        </ul>
+        <h3>Example 1: the very first update</h3>
+        <p>All guesses are 0. The agent is at queue 1, sends to Fog, pays 2, and lands at queue 2.</p>
+        <span class="math">target = −2 + 0.9 × max(0, 0) = −2      δ = −2 − 0 = −2      Q(1, Fog) = 0 + 0.1 × (−2) = −0.20</span>
+        <h3>Example 2: a later update</h3>
+        <p>Guesses are now near the truth: Q(0, Fog) = −19.00, Q(1, Fog) = −21.64, Q(1, Cloud) = −21.00. The agent is at queue 0, sends to Fog, pays 1, and lands at queue 1.</p>
+        <span class="math">target = −1 + 0.9 × max(−21.64, −21.00) = −1 + 0.9 × (−21.00) = −19.90</span>
+        <span class="math">δ = −19.90 − (−19.00) = −0.90      Q(0, Fog) = −19.00 + 0.1 × (−0.90) = −19.09</span>
+        <p>Even at the truth, single samples push the value up and down a little: this time the queue happened not to drain. On average, the pushes cancel out and the guess sits at the true value.</p>
+        <div class="note"><p>"TD" stands for temporal difference: we learn a guess from another guess one step later. Q-learning is <strong>model-free</strong> (never needs T) and <strong>off-policy</strong> (it can learn the best policy while acting differently, for example while exploring).</p></div>`,
+    },
+    {
+      part: "Part 3 · Learning from experience",
+      title: "Exploration: the ε-greedy rule",
+      where: "Why the agent must sometimes act randomly",
+      html: () => `
+        <p>If the agent always picks the action with the highest current Q, it may never try an action that looked bad early on, and never discover that it is actually good. It must <strong>explore</strong> sometimes, but mostly <strong>exploit</strong> what it knows.</p>
+        <p>The simplest rule, used by DQN: <strong>ε-greedy</strong>.</p>
+        <ul>
+          <li>With probability ε: pick a <strong>random</strong> action.</li>
+          <li>Otherwise: pick the action with the <strong>highest Q</strong>.</li>
+        </ul>
+        <div class="row"><label class="inline" for="e">ε = <b id="ev"></b></label><input type="range" id="e" min="0" max="1" step="0.05" value="0.1"></div>
+        <p id="ex"></p>
+        <p>In practice ε starts high (like 1.0, pure exploration) and is lowered over training (to about 0.05). At the start the agent knows nothing, so exploring is cheap. Later it knows a lot, so exploring wastes reward.</p>
+        <div class="note"><p>Exploration is costly in a live system: every random action is a real task sent to a bad place. Keep this in mind: it is one of the reasons PCNME pretrains its agent before going online.</p></div>`,
+      mount(root) {
+        const update = () => {
+          const e = +root.querySelector("#e").value;
+          root.querySelector("#ev").textContent = e.toFixed(2);
+          const pBest = 1 - e + e / 2;
+          root.querySelector("#ex").innerHTML = `With 2 actions: the best-known action is chosen with probability <strong>${(pBest * 100).toFixed(0)}%</strong> (${((1 - e) * 100).toFixed(0)}% on purpose, plus ${((e / 2) * 100).toFixed(0)}% by random luck), the other one <strong>${((e / 2) * 100).toFixed(0)}%</strong>.`;
+        };
+        root.querySelector("#e").addEventListener("input", update);
+        update();
+      },
+    },
+    {
+      part: "Part 3 · Learning from experience",
+      title: "Watch Q-learning learn",
+      where: "α = 0.1, ε = 0.1, γ = 0.9, starting from all zeros",
+      html: () => `
+        <p>The agent below knows nothing about the world. It only acts, receives delays, and applies the update from two steps ago. Run it and watch the table approach the optimal one.</p>
+        <div class="row">
+          <button class="btn primary" id="a1">+100 tasks</button>
+          <button class="btn" id="a2">+1,000</button>
+          <button class="btn" id="a3">+10,000</button>
+          <button class="btn" id="a4">Start over</button>
+        </div>
+        <div class="stats">
+          <div class="stat"><b id="steps">0</b><span>tasks seen</span></div>
+          <div class="stat"><b id="avg">–</b><span>average delay, last 500</span></div>
+          <div class="stat"><b id="pol">–</b><span>states with the optimal action</span></div>
+        </div>
+        <canvas id="ch" role="img" aria-label="Average delay per task as learning progresses"></canvas>
+        <div class="legend"><span><i style="background:var(--f1)"></i>Average delay per block of 200 tasks</span><span><i style="border:2px dashed var(--muted)"></i>2.0, the optimal policy</span></div>
+        <div id="tbl"></div>
+        <p>It usually needs a few thousand tasks. The hardest state is queue 1, where Fog and Cloud differ by only 0.64. Note that the average stays a bit above 2.0 even after learning: 10% of actions are still random exploration.</p>`,
+      mount(root) {
+        let L;
+        const reset = () => {
+          L = { Q: STATES.map(() => ({ F: 0, C: 0 })), q: 0, n: 0, rand: makeRng((Date.now() ^ 0x9e3779b9) >>> 0), recent: [], blocks: [], blockSum: 0 };
+        };
+        const step = () => {
+          const { Q, rand } = L;
+          const q = L.q;
+          const a = rand() < 0.1 ? (rand() < 0.5 ? "F" : "C") : bestAct(Q[q]);
+          const [r, q1] = sampleStep(q, a, rand);
+          Q[q][a] += 0.1 * (r + GAMMA * Math.max(Q[q1].F, Q[q1].C) - Q[q][a]);
+          L.q = q1;
+          L.n++;
+          L.recent.push(-r);
+          if (L.recent.length > 500) L.recent.shift();
+          L.blockSum -= r;
+          if (L.n % 200 === 0) { L.blocks.push([L.n, L.blockSum / 200]); L.blockSum = 0; }
+        };
+        const render = () => {
+          root.querySelector("#steps").textContent = L.n.toLocaleString("en-US");
+          root.querySelector("#avg").textContent = L.recent.length ? (L.recent.reduce((a, b) => a + b, 0) / L.recent.length).toFixed(2) : "–";
+          const good = STATES.filter((q) => L.Q[q].F !== L.Q[q].C && bestAct(L.Q[q]) === optPolicy(q)).length;
+          root.querySelector("#pol").textContent = `${good} of 4`;
+          root.querySelector("#tbl").innerHTML = qTableHtml(L.Q, { compare: true });
+          const xmax = Math.max(1000, L.n);
+          drawLines(root.querySelector("#ch"), {
+            x0: 0, x1: xmax, y0: 1.5, y1: 4,
+            xTicks: [0, xmax / 2, xmax].map(Math.round), yTicks: [1.5, 2, 2.5, 3, 3.5, 4],
+            xLabel: "Tasks seen", yLabel: "Delay per task",
+            series: [
+              { pts: [[0, 2], [xmax, 2]], color: cssVar("--muted"), dashed: true, width: 1.5 },
+              { pts: L.blocks, color: cssVar("--f1") },
+            ],
+          });
+        };
+        const run = (k) => { for (let i = 0; i < k; i++) step(); render(); };
+        root.querySelector("#a1").addEventListener("click", () => run(100));
+        root.querySelector("#a2").addEventListener("click", () => run(1000));
+        root.querySelector("#a3").addEventListener("click", () => run(10000));
+        root.querySelector("#a4").addEventListener("click", () => { reset(); render(); });
+        reset();
+        render();
+      },
+    },
+    // ---------------- Part 4: deep RL ----------------
+    {
+      part: "Part 4 · Deep RL",
+      title: "Why tables stop working",
+      where: "From a table to a neural network",
+      html: () => `
+        <p>Our toy has 4 states, so the Q-table has 8 cells. Now look at PCNME's state: 11 numbers, such as the task size, the load and queue of each fog node, the deadline, the time before the car leaves the zone. Most are real numbers. There are infinitely many states, so a table is impossible.</p>
+        <p>The fix: replace the table with a <strong>function</strong> that computes Q from the state. A neural network with weights θ:</p>
+        <span class="math">state s (11 numbers) → neural network θ → Q(s, Fog 1), Q(s, Fog 2), Q(s, Fog 3), Q(s, Fog 4), Q(s, Cloud)</span>
+        <ul>
+          <li>The network outputs <strong>one Q-value per action</strong> in one pass. The agent picks the highest, as before.</li>
+          <li>It <strong>generalises</strong>: states it has never seen but that resemble known ones get similar values.</li>
+          <li>Learning now means adjusting θ, not writing into cells.</li>
+        </ul>
+        <p>This is <strong>deep reinforcement learning</strong>: RL where a deep neural network does the estimating. The rest of the lesson is about making that work reliably.</p>`,
+    },
+    {
+      part: "Part 4 · Deep RL",
+      title: "DQN: the Deep Q-Network",
+      where: "Mnih et al., 2015. The base of PCNME, Tang & Wong and QECO",
+      html: () => `
+        <p>The idea is Q-learning with a network instead of a table. The update becomes a <strong>loss</strong> to minimise by gradient descent:</p>
+        <span class="math">L(θ) = ( y − Q(s, a; θ) )²      with target   y = r + γ · maxₐ′ Q(s′, a′; θ⁻)</span>
+        <p>It is the same TD error as before, squared. Plain Q-learning with a network is unstable, so DQN adds two tricks:</p>
+        <ol>
+          <li><strong>Replay buffer.</strong> Consecutive experiences are very similar (the same car, the same moment), and training on them in order makes the network forget and oscillate. So every experience (s, a, r, s′) is stored in a large buffer, and training uses <strong>random mini-batches</strong> from it. The same experience can be reused many times.</li>
+          <li><strong>Target network θ⁻.</strong> In the loss, the target y uses the network itself, so every update moves the target too, like chasing your own shadow. DQN computes y with a <strong>frozen copy</strong> θ⁻ that is only updated every C steps.</li>
+        </ol>
+        <svg class="dg" viewBox="0 0 720 300" role="img" aria-label="DQN training loop">
+          <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>
+          <path d="M645 46 V16 H80 V46" marker-end="url(#ar)"/>
+          <text class="lbl" x="362" y="12" text-anchor="middle">next state s′ becomes the new state</text>
+          <rect x="20" y="48" width="120" height="54" rx="10"/><text x="80" y="80" text-anchor="middle">State s</text>
+          <path d="M140 75 H186" marker-end="url(#ar)"/>
+          <rect class="hl" x="188" y="48" width="160" height="54" rx="10"/><text x="268" y="72" text-anchor="middle">Online network θ</text><text class="lbl" x="268" y="90" text-anchor="middle">one Q per action</text>
+          <path d="M348 75 H394" marker-end="url(#ar)"/>
+          <rect x="396" y="48" width="150" height="54" rx="10"/><text x="471" y="72" text-anchor="middle">Pick action a</text><text class="lbl" x="471" y="90" text-anchor="middle">ε-greedy</text>
+          <path d="M546 75 H588" marker-end="url(#ar)"/>
+          <rect x="590" y="48" width="110" height="54" rx="10"/><text x="645" y="80" text-anchor="middle">Environment</text>
+          <path d="M645 102 V178" marker-end="url(#ar)"/>
+          <text class="lbl" x="652" y="145">(s, a, r, s′)</text>
+          <rect x="590" y="180" width="110" height="60" rx="10"/><text x="645" y="206" text-anchor="middle">Replay</text><text x="645" y="224" text-anchor="middle">buffer</text>
+          <path d="M590 210 H548" marker-end="url(#ar)"/>
+          <rect x="396" y="180" width="150" height="60" rx="10"/><text x="471" y="206" text-anchor="middle">Random</text><text x="471" y="224" text-anchor="middle">mini-batch</text>
+          <path d="M396 210 H350" marker-end="url(#ar)"/>
+          <rect x="188" y="180" width="160" height="60" rx="10"/><text x="268" y="204" text-anchor="middle">Target network θ⁻</text><text class="lbl" x="268" y="222" text-anchor="middle">computes y</text>
+          <path d="M188 210 H142" marker-end="url(#ar)"/>
+          <rect x="20" y="180" width="120" height="60" rx="10"/><text x="80" y="204" text-anchor="middle">Loss</text><text class="lbl" x="80" y="222" text-anchor="middle">(y − Q(s,a;θ))²</text>
+          <path d="M80 180 V130 H230 V104" marker-end="url(#ar)"/>
+          <text class="lbl" x="150" y="124" text-anchor="middle">update θ</text>
+          <path class="dash" d="M310 104 V178" marker-end="url(#ar)"/>
+          <text class="lbl" x="318" y="145">copy θ → θ⁻ every C steps</text>
+        </svg>
+        <p>The loop: see s, pick a with ε-greedy, the environment returns r and s′, store the experience, sample a random mini-batch, compute targets with θ⁻, take a gradient step on θ, and every C steps copy θ into θ⁻.</p>`,
+    },
+    {
+      part: "Part 4 · Deep RL",
+      title: "Double DQN: fixing overestimation",
+      where: "van Hasselt et al., 2016",
+      html: () => `
+        <p>The target uses <strong>max</strong> over estimated Q-values. Estimates are noisy, and the max of noisy numbers is biased upward: it picks whichever estimate happened to be too high. DQN therefore systematically overestimates values.</p>
+        <p>Try it. Every action below has a true value of exactly <strong>0</strong>. We estimate each with random noise and take the max, 20,000 times:</p>
+        <div class="row"><label class="inline" for="na">Actions: <b id="nav"></b></label><input type="range" id="na" min="2" max="10" step="1" value="5"></div>
+        <div class="row"><label class="inline" for="sg">Noise: <b id="sgv"></b></label><input type="range" id="sg" min="0" max="3" step="0.25" value="1"></div>
+        <div class="stats">
+          <div class="stat"><b>0.00</b><span>true best value</span></div>
+          <div class="stat"><b id="m1" style="color:var(--bad)"></b><span>DQN: max of one estimate</span></div>
+          <div class="stat"><b id="m2" style="color:var(--good)"></b><span>Double: choose with one, score with another</span></div>
+        </div>
+        <p><strong>The fix:</strong> use two different estimates, one to <em>choose</em> the action and the other to <em>score</em> it. Their errors are independent, so a lucky high choice is not also scored high. Double DQN uses the online network to choose and the target network to score:</p>
+        <span class="math">y = r + γ · Q( s′, arg maxₐ′ Q(s′, a′; θ) ; θ⁻ )</span>
+        <div class="note"><p>It is <strong>arg max</strong>, because rewards are something to maximise. Your supervisor flagged that the DSLAB2 report writes arg min here. arg min would only be right if Q measured cost, and then that must be said explicitly.</p></div>`,
+      mount(root) {
+        const gauss = (rand) => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
+        const update = () => {
+          const n = +root.querySelector("#na").value, s = +root.querySelector("#sg").value;
+          root.querySelector("#nav").textContent = n;
+          root.querySelector("#sgv").textContent = s.toFixed(2);
+          const rand = makeRng(12345);
+          let single = 0, dbl = 0;
+          const T = 20000;
+          for (let t = 0; t < T; t++) {
+            let best = -Infinity, bi = 0;
+            const a = [], b = [];
+            for (let i = 0; i < n; i++) { a.push(s * gauss(rand)); b.push(s * gauss(rand)); }
+            for (let i = 0; i < n; i++) if (a[i] > best) { best = a[i]; bi = i; }
+            single += best;
+            dbl += b[bi];
+          }
+          root.querySelector("#m1").textContent = (single / T).toFixed(2);
+          root.querySelector("#m2").textContent = f2(dbl / T);
+        };
+        root.querySelector("#na").addEventListener("input", update);
+        root.querySelector("#sg").addEventListener("input", update);
+        update();
+      },
+    },
+    {
+      part: "Part 4 · Deep RL",
+      title: "Dueling DQN",
+      where: "Wang et al., 2016. Used by Tang & Wong and QECO",
+      html: () => `
+        <p>In many states the action barely matters. In our toy at queue 3, Fog and Cloud differ by only 1 out of about 24. What matters most is <em>how good the state is</em>. Dueling DQN splits the network's last layers into two heads:</p>
+        <ul>
+          <li><strong>V(s)</strong>: how good the state is, whatever you do.</li>
+          <li><strong>A(s, a)</strong>, the advantage: how much better each action is than the others.</li>
+        </ul>
+        <span class="math">Q(s, a) = V(s) + A(s, a) − mean<sub>a′</sub> A(s, a′)</span>
+        <p>Example at queue 1: V = −21.32, A(Fog) = −0.32, A(Cloud) = +0.32. The mean of A is 0, so Q(Fog) = −21.64 and Q(Cloud) = −21.00, our values from before.</p>
+        <p>Subtracting the mean makes the split unique. Otherwise "V + 5, A − 5" would give the same Q and the network could not decide how to split.</p>
+        <div class="note"><p>Why it helps: V(s) learns from every experience in s, whatever the action, so it learns faster. The architecture changes; the loss and the training loop stay exactly as in DQN. "D3QN" means dueling + double DQN together.</p></div>`,
+    },
+    {
+      part: "Part 4 · Deep RL",
+      title: "LSTM: giving the agent memory",
+      where: "Used by Tang & Wong and QECO",
+      html: () => `
+        <p>The Markov property says the current state must contain everything needed. In real offloading it often does not: a single snapshot of the edge load does not tell you whether the load is <em>rising</em> or <em>falling</em>.</p>
+        <p>An <strong>LSTM</strong> (long short-term memory) is a neural network layer made for sequences. It reads the last T observations one after another and keeps an internal memory, so it can detect trends.</p>
+        <span class="math">last T load observations → LSTM → summary of the trend → added to the state → Q-network</span>
+        <p>Tang & Wong use it to estimate how loaded each edge node will be, from its recent history, because a device cannot see the other devices' decisions.</p>
+        <div class="note"><p>PCNME does not use an LSTM. It gives the agent the current queue depth and load of every fog node directly. That is a design choice worth one sentence in your thesis, because your two DQN baselines both use an LSTM.</p></div>`,
+    },
+    // ---------------- Part 5: policy methods ----------------
+    {
+      part: "Part 5 · Learning the policy directly",
+      title: "Policy gradient and actor-critic",
+      where: "The second family of RL methods",
+      html: () => `
+        <p>Everything so far was <strong>value-based</strong>: learn Q, then pick the best action. The other family is <strong>policy-based</strong>: learn the policy directly, as probabilities.</p>
+        <span class="math">π(a | s; θ) = probability of choosing a in state s, for example Fog 80%, Cloud 20%</span>
+        <p>The learning rule, in words: <strong>if an action turned out better than expected, make it more likely; if worse, less likely</strong>. "Better than expected" is the <strong>advantage</strong>:</p>
+        <span class="math">A(s, a) = Q(s, a) − V(s)</span>
+        <span class="math">∇J(θ) = E[ ∇ log π(a | s; θ) · A(s, a) ]</span>
+        <p>The second line is the policy gradient: the direction that increases the probability of actions with positive advantage, in proportion to how good they were.</p>
+        <p>To know A, you need an estimate of V. So most methods train two networks together:</p>
+        <ul>
+          <li>The <strong>actor</strong>: the policy π, which acts.</li>
+          <li>The <strong>critic</strong>: the value V(s), which judges whether the outcome was better than expected.</li>
+        </ul>
+        <div class="table-wrap"><table>
+          <thead><tr><th></th><th>Value-based (DQN family)</th><th>Policy-based (PPO family)</th></tr></thead>
+          <tbody>
+            <tr><td>Learns</td><td class="wrap">Q(s, a)</td><td class="wrap">π(a | s), plus a critic V(s)</td></tr>
+            <tr><td>Chooses</td><td class="wrap">arg max Q, with ε-greedy exploration</td><td class="wrap">Samples from the probabilities</td></tr>
+            <tr><td>Data</td><td class="wrap">Off-policy: reuses old experience from the replay buffer</td><td class="wrap">On-policy: needs fresh experience from the current policy</td></tr>
+            <tr><td>Good for</td><td class="wrap">Small discrete action sets, like PCNME's 5 places</td><td class="wrap">Large or continuous action sets; very stable training</td></tr>
+          </tbody>
+        </table></div>`,
+    },
+    {
+      part: "Part 5 · Learning the policy directly",
+      title: "PPO: careful policy updates",
+      where: "Schulman et al., 2017. The algorithm of the VFC paper",
+      html: () => `
+        <p>Policy gradient has one danger: a single big update can wreck a good policy, and then it collects bad data and cannot recover. <strong>PPO (Proximal Policy Optimization)</strong> limits how far one update may move the policy.</p>
+        <p>It compares the new policy with the old one through a ratio:</p>
+        <span class="math">ρ = π<sub>new</sub>(a | s) ÷ π<sub>old</sub>(a | s)      (ρ = 1.3 means: 30% more likely than before)</span>
+        <span class="math">L = min( ρ · A ,  clip(ρ, 1 − ε, 1 + ε) · A )      with ε = 0.2</span>
+        <p>Move the ratio and switch the sign of the advantage:</p>
+        <div class="row">
+          <button class="btn primary" id="sgn">Advantage A = +1 (good action)</button>
+          <label class="inline" for="rho">ρ = <b id="rv"></b></label><input type="range" id="rho" min="0" max="2" step="0.02" value="1">
+        </div>
+        <canvas id="ch" role="img" aria-label="PPO clipped objective as a function of the ratio"></canvas>
+        <div class="legend"><span><i style="border:2px dashed var(--muted)"></i>Unclipped ρ · A</span><span><i style="background:var(--f1)"></i>PPO objective</span></div>
+        <p class="verdict" id="out"></p>
+        <p>Where the solid line is flat, the gradient is zero: once a good action is already 20% more likely, PPO stops pushing it further in this update. The same for bad actions below 0.8. Small, safe steps.</p>
+        <div class="note"><p>The VFC paper uses PPO with the reward R = Σ (−delay + 5) over tasks completed since the last decision: +5 per finished task, minus its delay. Your supervisor's note says to re-run their PPO in your simulator, following their code.</p></div>`,
+      mount(root) {
+        let sign = 1;
+        const EPS = 0.2;
+        const obj = (r) => Math.min(r * sign, Math.min(Math.max(r, 1 - EPS), 1 + EPS) * sign);
+        const update = () => {
+          const r = +root.querySelector("#rho").value;
+          root.querySelector("#rv").textContent = r.toFixed(2);
+          root.querySelector("#sgn").textContent = sign > 0 ? "Advantage A = +1 (good action)" : "Advantage A = −1 (bad action)";
+          const xs = Array.from({ length: 101 }, (_, i) => i * 0.02);
+          drawLines(root.querySelector("#ch"), {
+            x0: 0, x1: 2, y0: -2.2, y1: 2.2,
+            xTicks: [0, 0.5, 0.8, 1, 1.2, 1.5, 2], yTicks: [-2, -1, 0, 1, 2],
+            xFmt: (v) => v.toFixed(1), xLabel: "Ratio ρ", yLabel: "Objective",
+            series: [
+              { pts: xs.map((x) => [x, x * sign]), color: cssVar("--muted"), dashed: true, width: 1.5 },
+              { pts: xs.map((x) => [x, obj(x)]), color: cssVar("--f1"), width: 2.5 },
+            ],
+            dots: [{ x: r, y: obj(r), color: cssVar("--ink") }],
+          });
+          const clipped = obj(r) !== r * sign;
+          root.querySelector("#out").textContent = `Objective = ${obj(r).toFixed(2)}. ${clipped ? "Clipped: no further push in this direction." : "Not clipped: the update still pushes."}`;
+        };
+        root.querySelector("#sgn").addEventListener("click", () => { sign = -sign; update(); });
+        root.querySelector("#rho").addEventListener("input", update);
+        update();
+      },
+    },
+    // ---------------- Part 6: PCNME ----------------
+    {
+      part: "Part 6 · RL in PCNME",
+      title: "Behavioral cloning and the cold start",
+      where: "The core idea of PCNME",
+      html: () => `
+        <p>A fresh DQN knows nothing. In its first thousands of decisions it sends real tasks to bad places while it explores. This is the <strong>cold-start problem</strong>, and in a live vehicular system those are real missed deadlines.</p>
+        <p><strong>Behavioral cloning (BC)</strong> fixes the start: before going online, train the network to copy an expert's decisions. It is ordinary supervised learning on pairs (state, expert action):</p>
+        <span class="math">L<sub>BC</sub>(θ) = − log π(a<sub>expert</sub> | s; θ)      (make the expert's action the most likely one)</span>
+        <p>For a DQN, this means pushing Q(s, a<sub>expert</sub>) above the other actions. In PCNME the expert is the NSGA-II knee point.</p>
+        <p>Below, two Q-learning agents on our toy, averaged over 200 runs. One starts from zero. The other starts cloned from the optimal policy (its expert action gets the higher starting value). Both then keep learning online the same way.</p>
+        <div class="row"><button class="btn primary" id="go">Run again</button></div>
+        <canvas id="ch" role="img" aria-label="Average delay per task for an agent from scratch and an agent pretrained by behavioral cloning"></canvas>
+        <div class="legend"><span><i style="background:var(--f2)"></i>From scratch</span><span><i style="background:var(--f1)"></i>Pretrained by behavioral cloning</span><span><i style="border:2px dashed var(--muted)"></i>2.0, optimal</span></div>
+        <p id="msg"></p>
+        <div class="note">
+          <p><strong>The catch, distribution shift:</strong> the clone only saw states the expert visited. Once online, its own small mistakes lead it to states the expert never showed it, where it may behave badly. That is why PCNME continues with online DQN learning after cloning, and why your earlier plan considered IQL, an offline RL method designed for this problem.</p>
+          <p><strong>The catch, a bad expert:</strong> the clone is only as good as its teacher. If the NSGA-II has bugs, the agent copies the bugs. That is why the optimizer fixes in your tracker matter.</p>
+        </div>`,
+      mount(root) {
+        const RUNS = 200, T = 400, W = 25;
+        const runAgent = (pretrained, seed) => {
+          const rand = makeRng(seed);
+          const Q = STATES.map((q) => {
+            if (!pretrained) return { F: 0, C: 0 };
+            const ex = optPolicy(q);
+            return { F: ex === "F" ? -20 : -25, C: ex === "C" ? -20 : -25 };
+          });
+          let q = 0;
+          const out = new Float64Array(T);
+          for (let t = 0; t < T; t++) {
+            const a = rand() < 0.1 ? (rand() < 0.5 ? "F" : "C") : bestAct(Q[q]);
+            const [r, q1] = sampleStep(q, a, rand);
+            Q[q][a] += 0.1 * (r + GAMMA * Math.max(Q[q1].F, Q[q1].C) - Q[q][a]);
+            out[t] = -r;
+            q = q1;
+          }
+          return out;
+        };
+        const curve = (pretrained, base) => {
+          const mean = new Float64Array(T);
+          for (let k = 0; k < RUNS; k++) {
+            const o = runAgent(pretrained, base + k);
+            for (let t = 0; t < T; t++) mean[t] += o[t] / RUNS;
+          }
+          const pts = [];
+          for (let t = W; t <= T; t++) {
+            let s = 0;
+            for (let i = t - W; i < t; i++) s += mean[i];
+            pts.push([t, s / W]);
+          }
+          return pts;
+        };
+        const run = () => {
+          const base = (Date.now() >>> 0) % 1000000;
+          const scratch = curve(false, base), bc = curve(true, base + 7919);
+          drawLines(root.querySelector("#ch"), {
+            x0: 0, x1: T, y0: 1.5, y1: 3.5,
+            xTicks: [0, 100, 200, 300, 400], yTicks: [1.5, 2, 2.5, 3, 3.5],
+            xLabel: "Tasks since going online", yLabel: "Delay per task",
+            series: [
+              { pts: [[0, 2], [T, 2]], color: cssVar("--muted"), dashed: true, width: 1.5 },
+              { pts: scratch, color: cssVar("--f2") },
+              { pts: bc, color: cssVar("--f1") },
+            ],
+          });
+          const avg = (p) => p.reduce((s, x) => s + x[1], 0) / p.length;
+          root.querySelector("#msg").textContent = `Over the first ${T} tasks: from scratch averages ${avg(scratch).toFixed(2)} per task, the cloned agent ${avg(bc).toFixed(2)}. The cloned agent is good from the very first task.`;
+        };
+        root.querySelector("#go").addEventListener("click", run);
+        run();
+      },
+    },
+    {
+      part: "Part 6 · RL in PCNME",
+      title: "Designing the reward",
+      where: "The agent optimises exactly what you write, nothing else",
+      html: () => `
+        <p>The reward is the only way to tell the agent what you want. Four rules:</p>
+        <ol>
+          <li><strong>Reward the goal, not a shortcut.</strong> If you only reward finished tasks, the agent may learn to drop hard tasks and finish easy ones. The VFC reward pays +5 per finished task <em>and</em> subtracts its delay.</li>
+          <li><strong>Make every term dimensionless.</strong> Adding seconds to joules is meaningless, and whichever unit has bigger numbers takes over. PCNME divides latency by the deadline (L / D) and energy by a reference (E / E<sub>ref</sub>). Your supervisor confirmed this part is correct.</li>
+          <li><strong>Weights are a decision.</strong> A reward like −(w₁ · L/D + w₂ · E/E<sub>ref</sub>) fixes one trade-off between delay and energy, exactly like one point on a Pareto front. Changing w changes the behaviour.</li>
+          <li><strong>Dense beats sparse.</strong> A reward after every decision teaches much faster than one reward at the end of an episode.</li>
+        </ol>
+        <div class="note"><p>Link to PCNME: the knee point you clone is one trade-off, and the reward weights online are another. If they do not match, cloning teaches one trade-off and online learning pulls toward another. Keep them consistent.</p></div>`,
+    },
+    {
+      part: "Part 6 · RL in PCNME",
+      title: "Which paper uses what",
+      where: "Your reading list, in RL terms",
+      html: () => `
+        <div class="table-wrap"><table>
+          <thead><tr><th>Paper</th><th>Algorithm</th><th>Family</th><th>Extras</th><th>Optimises</th></tr></thead>
+          <tbody>
+            <tr><td>VFC (Toopchinezhad & Ahmadi, 2024)</td><td>PPO</td><td>Policy-based, actor-critic</td><td class="wrap">Reward +5 per finished task minus its delay</td><td class="wrap">Delay only</td></tr>
+            <tr><td>Tang & Wong (2020)</td><td>DQN</td><td>Value-based</td><td class="wrap">Double + dueling + LSTM, one agent per device</td><td class="wrap">Delay and dropped tasks</td></tr>
+            <tr><td>QECO (Rahmaty et al., 2025)</td><td>D3QN</td><td>Value-based</td><td class="wrap">Double + dueling + LSTM</td><td class="wrap">QoE: finished tasks, delay, energy</td></tr>
+            <tr><td>PCNME (yours)</td><td>DQN</td><td>Value-based</td><td class="wrap">Behavioral cloning from NSGA-II knee points, then online learning</td><td class="wrap">Delay and energy</td></tr>
+          </tbody>
+        </table></div>
+        <p>What this tells you before reading:</p>
+        <ul>
+          <li>In the VFC paper, Section 4 is an MDP (step 5), a state, an action set, a reward (step 22) and PPO (step 20). You can read it now.</li>
+          <li>Tang & Wong and QECO both use double + dueling + LSTM (steps 16 to 18). When you compare against them, the difference is not only pretraining but also the network. Decide in your thesis whether PCNME uses Double DQN, which is still open in your tracker.</li>
+        </ul>`,
+    },
+    {
+      part: "Part 6 · RL in PCNME",
+      title: "All of RL on one screen",
+      where: "Summary",
+      html: () => `
+        <ul>
+          <li><strong>The loop:</strong> look at the state, act, get a reward, see the next state. The problem is an MDP ⟨S, A, T, R, γ⟩.</li>
+          <li><strong>The goal:</strong> a policy that maximises the discounted return G = r₀ + γ r₁ + γ² r₂ + …, not the next reward. Greedy is not optimal when actions have later effects.</li>
+          <li><strong>Values:</strong> V(s) and Q(s, a) measure future return. Act by arg max Q.</li>
+          <li><strong>Bellman:</strong> Q(s, a) = reward now + γ × expected value next. Value iteration solves it when T is known.</li>
+          <li><strong>Q-learning:</strong> learns from samples without T: Q ← Q + α (r + γ max Q′ − Q). Needs exploration (ε-greedy).</li>
+          <li><strong>DQN:</strong> a neural network instead of a table, made stable by a replay buffer and a target network.</li>
+          <li><strong>Improvements:</strong> Double DQN removes overestimation (arg max with θ, score with θ⁻). Dueling splits V and A. LSTM adds memory.</li>
+          <li><strong>Policy methods:</strong> learn probabilities directly using the advantage; actor-critic uses a critic. PPO clips updates to keep them small.</li>
+          <li><strong>Behavioral cloning:</strong> copy an expert first to avoid the cold start, then keep learning online to fix distribution shift.</li>
+          <li><strong>Reward:</strong> dimensionless terms, the real goal, weights consistent with the expert's trade-off.</li>
+        </ul>
+        <div class="note"><p>Next: the VFC paper. Start with Section 4 and tell me where it gets blurry.</p></div>`,
+    },
+  ];
+
+  // ================= Navigation =================
+  const card = document.getElementById("card");
+  const progress = document.getElementById("progress");
+  let index = 0;
+
+  STEPS.forEach((s, i) => {
+    const b = document.createElement("button");
+    b.setAttribute("aria-label", `Step ${i + 1}: ${s.title}`);
+    b.title = s.title;
+    b.addEventListener("click", () => go(i));
+    progress.appendChild(b);
+  });
+
+  function render() {
+    const s = STEPS[index];
+    card.innerHTML = `<p class="part">${s.part}</p><h2>${index + 1}. ${s.title}</h2><p class="where">${s.where}</p>${s.html()}`;
+    if (s.mount) s.mount(card);
+    document.getElementById("counter").textContent = `Step ${index + 1} of ${STEPS.length}`;
+    [...progress.children].forEach((b, i) => {
+      b.className = i === index ? "current" : i < index ? "done" : "";
+      b.setAttribute("aria-current", i === index ? "step" : "false");
+    });
+    document.getElementById("back").disabled = index === 0;
+    const next = document.getElementById("next");
+    next.disabled = index === STEPS.length - 1;
+    next.textContent = index === STEPS.length - 1 ? "Finished" : "Next";
+    try { localStorage.setItem("rl-lesson-step", String(index)); } catch (e) { /* storage unavailable */ }
+  }
+
+  function go(i) {
+    index = Math.max(0, Math.min(STEPS.length - 1, i));
+    render();
+    window.scrollTo(0, 0);
+  }
+
+  document.getElementById("back").addEventListener("click", () => go(index - 1));
+  document.getElementById("next").addEventListener("click", () => go(index + 1));
+  document.addEventListener("keydown", (e) => {
+    if (e.target.matches("input, textarea")) return;
+    if (e.key === "ArrowRight") go(index + 1);
+    if (e.key === "ArrowLeft") go(index - 1);
+  });
+
+  // Charts depend on width and theme; re-render only steps that draw on a canvas.
+  const redraw = () => { if (card.querySelector("canvas")) render(); };
+  let resizeTimer = null;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(redraw, 200); });
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+
+  try {
+    const saved = parseInt(localStorage.getItem("rl-lesson-step"), 10);
+    if (Number.isInteger(saved) && saved >= 0 && saved < STEPS.length) index = saved;
+  } catch (e) { /* storage unavailable */ }
+  render();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(redraw);
+})();
+</script>
+</body>
+</html>
