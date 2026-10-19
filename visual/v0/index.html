@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>html,body{margin:0;height:100%;background:#0b0e13;color:#dfe6ee;font-family:'IBM Plex Sans',sans-serif;overflow:hidden}a{color:#7fb8ff}a:hover{color:#b3d4ff}button{font-family:inherit}</style>
+</helmet>
+<div style="position:relative;width:100%;height:100vh;overflow:hidden;background:#0b0e13;">
+  <div ref="{{ stageRef }}" style="position:absolute;inset:0;"></div>
+
+  <sc-if value="{{ loading }}" hint-placeholder-val="{{ true }}">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:500 13px 'IBM Plex Mono',monospace;color:#6f7c8b;pointer-events:none;">{{ loadText }}</div>
+  </sc-if>
+
+  <div style="position:absolute;top:16px;left:16px;display:flex;flex-direction:column;gap:2px;pointer-events:none;">
+    <div style="font:700 20px 'IBM Plex Sans',sans-serif;letter-spacing:.04em;color:#eef3f8;">PCNME</div>
+    <div style="font:400 12px 'IBM Plex Mono',monospace;color:#8b97a5;">task offloading · IoT – Fog – Cloud</div>
+  </div>
+
+  <div style="position:absolute;top:16px;left:50%;transform:translateX(-50%);display:flex;gap:4px;padding:4px;background:rgba(14,18,24,.9);border:1px solid #222a35;border-radius:10px;">
+    <button onClick="{{ show3d }}" style="border:0;border-radius:7px;padding:7px 14px;white-space:nowrap;font:500 13px 'IBM Plex Sans',sans-serif;cursor:pointer;background:{{ v3bg }};color:{{ v3fg }};">3D city</button>
+    <button onClick="{{ showPoster }}" style="border:0;border-radius:7px;padding:7px 14px;white-space:nowrap;font:500 13px 'IBM Plex Sans',sans-serif;cursor:pointer;background:{{ vpbg }};color:{{ vpfg }};">System poster</button>
+  </div>
+
+  <sc-if value="{{ compact }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:16px;right:16px;bottom:56px;display:flex;flex-wrap:wrap;gap:6px;">
+      <button onClick="{{ play1 }}" style="display:flex;gap:6px;align-items:center;padding:7px 10px;border-radius:8px;border:1px solid {{ b1 }};background:rgba(14,18,24,.9);color:#dfe6ee;cursor:pointer;white-space:nowrap;font:500 12px 'IBM Plex Sans',sans-serif;"><span style="font:600 12px 'IBM Plex Mono',monospace;color:#4da3ff;">1</span>Normal task</button>
+      <button onClick="{{ play2 }}" style="display:flex;gap:6px;align-items:center;padding:7px 10px;border-radius:8px;border:1px solid {{ b2 }};background:rgba(14,18,24,.9);color:#dfe6ee;cursor:pointer;white-space:nowrap;font:500 12px 'IBM Plex Sans',sans-serif;"><span style="font:600 12px 'IBM Plex Mono',monospace;color:#4da3ff;">2</span>Zone change</button>
+      <button onClick="{{ play3 }}" style="display:flex;gap:6px;align-items:center;padding:7px 10px;border-radius:8px;border:1px solid {{ b3 }};background:rgba(14,18,24,.9);color:#dfe6ee;cursor:pointer;white-space:nowrap;font:500 12px 'IBM Plex Sans',sans-serif;"><span style="font:600 12px 'IBM Plex Mono',monospace;color:#4da3ff;">3</span>Coverage gap</button>
+      <button onClick="{{ play4 }}" style="display:flex;gap:6px;align-items:center;padding:7px 10px;border-radius:8px;border:1px solid {{ b4 }};background:rgba(14,18,24,.9);color:#dfe6ee;cursor:pointer;white-space:nowrap;font:500 12px 'IBM Plex Sans',sans-serif;"><span style="font:600 12px 'IBM Plex Mono',monospace;color:#4da3ff;">4</span>Zone dies / joins</button>
+      <button onClick="{{ play5 }}" style="display:flex;gap:6px;align-items:center;padding:7px 10px;border-radius:8px;border:1px solid {{ b5 }};background:rgba(14,18,24,.9);color:#dfe6ee;cursor:pointer;white-space:nowrap;font:500 12px 'IBM Plex Sans',sans-serif;"><span style="font:600 12px 'IBM Plex Mono',monospace;color:#4da3ff;">5</span>Cloud congestion</button>
+      <button onClick="{{ doReset }}" style="padding:7px 10px;border-radius:8px;border:1px solid #222a35;background:rgba(14,18,24,.9);color:#8b97a5;font:500 12px 'IBM Plex Mono',monospace;cursor:pointer;">Reset</button>
+    </div>
+  </sc-if>
+  <sc-if value="{{ wide }}" hint-placeholder-val="{{ true }}">
+  <div style="position:absolute;left:16px;bottom:52px;width:300px;display:flex;flex-direction:column;gap:6px;padding:12px;background:rgba(14,18,24,.88);border:1px solid #222a35;border-radius:12px;backdrop-filter:blur(8px);">
+    <div style="font:600 11px 'IBM Plex Mono',monospace;color:#8b97a5;letter-spacing:.1em;text-transform:uppercase;padding:0 2px 4px;">Play a flow</div>
+    <button onClick="{{ play1 }}" style="display:flex;gap:10px;align-items:flex-start;text-align:left;padding:8px 10px;border-radius:8px;border:1px solid {{ b1 }};background:{{ g1 }};color:#dfe6ee;cursor:pointer;">
+      <span style="font:600 12px 'IBM Plex Mono',monospace;color:#4da3ff;width:14px;padding-top:1px;">1</span>
+      <span style="display:flex;flex-direction:column;gap:1px;"><span style="font:500 13px 'IBM Plex Sans',sans-serif;">Normal task</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:#8b97a5;white-space:nowrap;">anchor → D3QN → executor → car</span></span>
+    </button>
+    <button onClick="{{ play2 }}" style="display:flex;gap:10px;align-items:flex-start;text-align:left;padding:8px 10px;border-radius:8px;border:1px solid {{ b2 }};background:{{ g2 }};color:#dfe6ee;cursor:pointer;">
+      <span style="font:600 12px 'IBM Plex Mono',monospace;color:#4da3ff;width:14px;padding-top:1px;">2</span>
+      <span style="display:flex;flex-direction:column;gap:1px;"><span style="font:500 13px 'IBM Plex Sans',sans-serif;">Car changes zone</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:#8b97a5;white-space:nowrap;">result finds the car in Z2</span></span>
+    </button>
+    <button onClick="{{ play3 }}" style="display:flex;gap:10px;align-items:flex-start;text-align:left;padding:8px 10px;border-radius:8px;border:1px solid {{ b3 }};background:{{ g3 }};color:#dfe6ee;cursor:pointer;">
+      <span style="font:600 12px 'IBM Plex Mono',monospace;color:#4da3ff;width:14px;padding-top:1px;">3</span>
+      <span style="display:flex;flex-direction:column;gap:1px;"><span style="font:500 13px 'IBM Plex Sans',sans-serif;">Coverage gap</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:#8b97a5;white-space:nowrap;">tunnel → anchor holds → re-send</span></span>
+    </button>
+    <button onClick="{{ play4 }}" style="display:flex;gap:10px;align-items:flex-start;text-align:left;padding:8px 10px;border-radius:8px;border:1px solid {{ b4 }};background:{{ g4 }};color:#dfe6ee;cursor:pointer;">
+      <span style="font:600 12px 'IBM Plex Mono',monospace;color:#4da3ff;width:14px;padding-top:1px;">4</span>
+      <span style="display:flex;flex-direction:column;gap:1px;"><span style="font:500 13px 'IBM Plex Sans',sans-serif;">Zone dies / joins</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:#8b97a5;white-space:nowrap;">Z3 offline, Z5 comes online</span></span>
+    </button>
+    <button onClick="{{ play5 }}" style="display:flex;gap:10px;align-items:flex-start;text-align:left;padding:8px 10px;border-radius:8px;border:1px solid {{ b5 }};background:{{ g5 }};color:#dfe6ee;cursor:pointer;">
+      <span style="font:600 12px 'IBM Plex Mono',monospace;color:#4da3ff;width:14px;padding-top:1px;">5</span>
+      <span style="display:flex;flex-direction:column;gap:1px;"><span style="font:500 13px 'IBM Plex Sans',sans-serif;">Cloud congestion</span><span style="font:400 11px 'IBM Plex Sans',sans-serif;color:#8b97a5;white-space:nowrap;">WAN saturates, agent stays local</span></span>
+    </button>
+    <button onClick="{{ doReset }}" style="margin-top:4px;padding:7px 10px;border-radius:8px;border:1px solid #222a35;background:transparent;color:#8b97a5;font:500 12px 'IBM Plex Mono',monospace;cursor:pointer;" style-hover="color:#dfe6ee;border-color:#3a4552;">Reset</button>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ hasSel }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;left:{{ inspLeft }};bottom:{{ inspBottom }};width:262px;display:flex;flex-direction:column;gap:10px;padding:14px;background:rgba(14,18,24,.92);border:1px solid #2c3a4a;border-radius:12px;backdrop-filter:blur(8px);">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;">
+        <div style="display:flex;gap:8px;align-items:baseline;"><span style="font:600 17px 'IBM Plex Sans',sans-serif;color:#eef3f8;">Fog node {{ insp.id }}</span><span style="font:500 11px 'IBM Plex Mono',monospace;color:{{ insp.statusColor }};">{{ insp.status }}</span></div>
+        <button onClick="{{ closeSel }}" style="border:0;background:transparent;color:#8b97a5;font:500 16px 'IBM Plex Mono',monospace;cursor:pointer;padding:0 2px;">×</button>
+      </div>
+      <div style="font:400 11px 'IBM Plex Mono',monospace;color:#8b97a5;">{{ insp.meta }}</div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <div style="padding:7px 10px;border-radius:7px;background:#19212c;border:1px solid #2a3440;display:flex;justify-content:space-between;gap:8px;"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#dfe6ee;">TOF-Broker</span><span style="font:400 11px 'IBM Plex Mono',monospace;color:#8b97a5;">heavy → cloud</span></div>
+        <div style="font:400 11px 'IBM Plex Mono',monospace;color:#56616f;padding-left:12px;">↓</div>
+        <div style="padding:7px 10px;border-radius:7px;background:#19212c;border:1px solid #2a3440;display:flex;justify-content:space-between;gap:8px;"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#dfe6ee;">D3QN agent</span><span style="font:400 11px 'IBM Plex Mono',monospace;color:#8b97a5;">6 actions</span></div>
+        <div style="font:400 11px 'IBM Plex Mono',monospace;color:#56616f;padding-left:12px;">↓</div>
+        <div style="padding:7px 10px;border-radius:7px;background:#19212c;border:1px solid #2a3440;display:flex;justify-content:space-between;gap:8px;"><span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#dfe6ee;">Priority queue</span><span style="font:400 11px 'IBM Plex Mono',monospace;color:#8b97a5;">{{ insp.queue }}</span></div>
+        <div style="font:400 11px 'IBM Plex Mono',monospace;color:#56616f;padding-left:12px;">↓</div>
+        <div style="padding:7px 10px;border-radius:7px;background:#19212c;border:1px solid #2a3440;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+          <span style="font:500 12px 'IBM Plex Sans',sans-serif;color:#dfe6ee;">Execution slots</span>
+          <span style="display:flex;gap:4px;">
+            <sc-for list="{{ insp.slots }}" as="s" hint-placeholder-count="4"><span style="width:16px;height:12px;border-radius:3px;background:{{ s.bg }};"></span></sc-for>
+          </span>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+        <div style="padding:6px 8px;border-radius:7px;border:1px dashed #2a3440;display:flex;flex-direction:column;gap:1px;"><span style="font:500 11px 'IBM Plex Sans',sans-serif;color:#c9d3de;">Mobility predictor</span><span style="font:400 10px 'IBM Plex Mono',monospace;color:#6f7c8b;">GPS / 100 ms</span></div>
+        <div style="padding:6px 8px;border-radius:7px;border:1px dashed #2a3440;display:flex;flex-direction:column;gap:1px;"><span style="font:500 11px 'IBM Plex Sans',sans-serif;color:#c9d3de;">State store</span><span style="font:400 10px 'IBM Plex Mono',monospace;color:#6f7c8b;">via MQTT</span></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:3px;">
+        <sc-for list="{{ insp.neigh }}" as="n" hint-placeholder-count="4">
+          <div style="display:flex;justify-content:space-between;font:400 11px 'IBM Plex Mono',monospace;color:#8b97a5;"><span>{{ n.slot }} · {{ n.id }}</span><span style="color:{{ n.color }};">{{ n.state }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute;top:{{ traceTop }};right:16px;width:{{ traceW }};max-height:{{ traceMaxH }};display:flex;flex-direction:column;gap:10px;">
+    <sc-if value="{{ hasDecision }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-direction:column;gap:7px;padding:12px 14px;background:rgba(14,18,24,.9);border:1px solid #222a35;border-radius:12px;backdrop-filter:blur(8px);">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;">
+          <span style="font:600 11px 'IBM Plex Mono',monospace;color:#8b97a5;letter-spacing:.1em;text-transform:uppercase;">D3QN · anchor {{ decision.zone }}</span>
+          <span style="font:400 11px 'IBM Plex Mono',monospace;color:#56616f;">Q-value</span>
+        </div>
+        <sc-for list="{{ decision.options }}" as="o" hint-placeholder-count="6">
+          <div style="display:grid;grid-template-columns:96px minmax(0,1fr) 54px;gap:8px;align-items:center;opacity:{{ o.op }};">
+            <span style="font:500 12px 'IBM Plex Mono',monospace;color:{{ o.fg }};">{{ o.label }}</span>
+            <div style="height:8px;background:#1b222c;border-radius:4px;overflow:hidden;"><div style="height:100%;width:{{ o.w }};background:{{ o.bar }};border-radius:4px;"></div></div>
+            <span style="font:400 11px 'IBM Plex Mono',monospace;color:#8b97a5;text-align:right;">{{ o.q }}</span>
+          </div>
+        </sc-for>
+        <div style="font:400 12px/1.45 'IBM Plex Sans',sans-serif;color:#9aa6b4;text-wrap:pretty;padding-top:2px;">{{ decision.note }}</div>
+      </div>
+    </sc-if>
+    <div style="display:flex;flex-direction:column;gap:8px;padding:12px 14px;background:rgba(14,18,24,.88);border:1px solid #222a35;border-radius:12px;backdrop-filter:blur(8px);overflow:auto;min-height:0;">
+      <div style="font:600 11px 'IBM Plex Mono',monospace;color:#8b97a5;letter-spacing:.1em;text-transform:uppercase;">Live trace</div>
+      <sc-if value="{{ noLog }}" hint-placeholder-val="{{ true }}">
+        <div style="font:400 12.5px/1.5 'IBM Plex Sans',sans-serif;color:#8b97a5;text-wrap:pretty;">Pick a flow to follow car 7. The faint grey dots are zones and the cloud syncing state through the broker. Click a server cabinet to look inside.</div>
+      </sc-if>
+      <sc-for list="{{ log }}" as="e" hint-placeholder-count="0">
+        <div style="display:flex;gap:9px;align-items:flex-start;">
+          <span style="width:8px;height:8px;border-radius:50%;background:{{ e.dot }};margin-top:6px;flex:none;"></span>
+          <span style="font:400 12.5px/1.5 'IBM Plex Sans',sans-serif;color:{{ e.fg }};text-wrap:pretty;">{{ e.text }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="position:absolute;left:16px;right:16px;bottom:12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;font:400 11px 'IBM Plex Mono',monospace;color:#8b97a5;pointer-events:none;">
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:9px;height:9px;border-radius:50%;background:#4da3ff;"></span>task</span>
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:9px;height:9px;border-radius:50%;background:#3ddc84;"></span>result</span>
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:9px;height:9px;border-radius:50%;background:#ffd23f;"></span>ack</span>
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:7px;height:7px;border-radius:50%;background:#8a94a3;opacity:.6;"></span>state</span>
+    <span style="width:1px;height:12px;background:#2a3440;"></span>
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:10px;height:10px;border-radius:3px;border:2px solid #ff6fa8;"></span>anchor</span>
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:10px;height:10px;border-radius:3px;border:2px solid #4da3ff;"></span>serving</span>
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:10px;height:10px;border-radius:3px;background:#3ddc84;"></span>executor</span>
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:10px;height:10px;border-radius:3px;background:#ffd23f;"></span>car</span>
+    <span style="width:1px;height:12px;background:#2a3440;"></span>
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:16px;height:0;border-top:1px solid #d8e2ee;opacity:.5;"></span>radio</span>
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:16px;height:0;border-top:2px solid #5f6b78;"></span>backhaul 1–5 ms</span>
+    <span style="display:flex;align-items:center;gap:6px;white-space:nowrap;"><span style="width:16px;height:0;border-top:2px solid {{ wanColor }};"></span>WAN {{ wanMs }} ms</span>
+    <span style="margin-left:auto;color:#56616f;white-space:nowrap;">{{ hint }}</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;speed&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:1,&quot;min&quot;:0.25,&quot;max&quot;:2,&quot;step&quot;:0.05,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Simulation&quot;},&quot;ambientState&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Simulation&quot;},&quot;radioLinks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Simulation&quot;}}">
+class Component extends DCLogic {
+  state = { view: '3d', flow: null, log: [], decision: null, sel: null, stats: null, ready: false, err: null };
+  stageRef = React.createRef();
+  componentDidMount() {
+    this.onResize = () => { const c = window.innerWidth < 1180; if (c !== this.state.compact) this.setState({ compact: c }, () => this.applyInsets()); };
+    window.addEventListener('resize', this.onResize);
+    this.state.compact = window.innerWidth < 1180;
+    this.boot();
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.onResize); this.api && this.api.destroy(); }
+  applyInsets() {
+    if (!this.api) return;
+    this.api.setInsets(this.state.compact ? { left: 0, right: 268, top: 64, bottom: 104 } : { left: 332, right: 360, top: 64, bottom: 44 });
+  }
+  componentDidUpdate(pp) {
+    if (pp.speed !== this.props.speed || pp.ambientState !== this.props.ambientState || pp.radioLinks !== this.props.radioLinks) this.applyProps();
+  }
+  applyProps() {
+    if (!this.api) return;
+    this.api.set({ speed: this.props.speed ?? 1, ambient: this.props.ambientState ?? true, radio: this.props.radioLinks ?? true });
+  }
+  async boot() {
+    try {
+      const m = await import(new URL('./pcnme.js', document.baseURI).href);
+      this.api = await m.createPCNME(this.stageRef.current, {
+        onLog: e => this.setState(s => ({ log: [...s.log, e].slice(-9) })),
+        onClear: () => this.setState({ log: [] }),
+        onDecision: d => this.setState({ decision: d }),
+        onFlow: f => this.setState({ flow: f }),
+        onSelect: z => this.setState({ sel: z }),
+        onTick: st => this.setState({ stats: st }),
+      });
+      this.applyProps();
+      this.applyInsets();
+      this.setState({ ready: true });
+    } catch (e) { console.error(e); this.setState({ err: String(e) }); }
+  }
+  renderVals() {
+    const s = this.state, f = s.flow;
+    const KC = { task: '#4da3ff', result: '#3ddc84', ack: '#ffd23f', state: '#8a94a3', warn: '#ff6b6b', info: '#c9d3de', done: '#3ddc84' };
+    const fb = n => f === n ? 'rgba(77,163,255,.13)' : 'transparent';
+    const fc = n => f === n ? '#4da3ff' : '#222a35';
+    const play = n => () => this.api && this.api.play(n);
+    const d = s.decision;
+    const decision = d ? {
+      zone: d.zone, note: d.note || '',
+      options: d.options.map(o => ({ label: o.label, q: o.masked ? o.why : o.q.toFixed(2), w: o.masked ? '0%' : Math.round(o.q * 100) + '%', bar: o.chosen ? '#3ddc84' : '#4a5868', fg: o.chosen ? '#3ddc84' : o.masked ? '#566170' : '#c9d3de', op: o.masked ? .55 : 1 })),
+    } : { zone: '', note: '', options: [] };
+    const z = s.sel && s.stats && s.stats.zones[s.sel];
+    const NC = { online: '#3ddc84', offline: '#ff6b6b', 'not joined': '#8b97a5', none: '#56616f' };
+    const insp = z ? {
+      id: z.id,
+      status: !z.joined ? 'can join later' : !z.alive ? 'offline' : 'online',
+      statusColor: !z.joined ? '#8b97a5' : !z.alive ? '#ff6b6b' : '#3ddc84',
+      meta: (z.roles.length ? z.roles.join(' · ') + ' · ' : '') + z.cars + ' car' + (z.cars === 1 ? '' : 's') + ' attached' + (z.held ? ' · holding a result' : ''),
+      queue: z.queue ? z.queue + ' waiting' : 'empty',
+      slots: z.slots.map(b => ({ bg: b ? '#3ddc84' : '#24303b' })),
+      neigh: z.neigh.map(n => ({ slot: n.slot, id: n.id, state: n.state === 'none' ? 'masked' : n.state, color: NC[n.state] })),
+    } : { id: '', status: '', statusColor: '#8b97a5', meta: '', queue: '', slots: [], neigh: [] };
+    const st = s.stats;
+    return {
+      stageRef: this.stageRef,
+      compact: !!s.compact, wide: !s.compact,
+      inspLeft: s.compact ? '16px' : '328px', inspBottom: s.compact ? '104px' : '52px',
+      traceW: s.compact ? '252px' : '328px', traceTop: s.compact ? '72px' : '16px',
+      traceMaxH: s.compact ? 'calc(100% - 180px)' : 'calc(100% - 80px)',
+      loading: !s.ready, loadText: s.err ? 'Could not load the 3D scene: ' + s.err : 'Loading scene…',
+      v3bg: s.view === '3d' ? '#24303d' : 'transparent', v3fg: s.view === '3d' ? '#eef3f8' : '#8b97a5',
+      vpbg: s.view === 'poster' ? '#24303d' : 'transparent', vpfg: s.view === 'poster' ? '#eef3f8' : '#8b97a5',
+      show3d: () => { this.setState({ view: '3d' }); this.api && this.api.setView('3d'); },
+      showPoster: () => { this.setState({ view: 'poster' }); this.api && this.api.setView('poster'); },
+      play1: play(1), play2: play(2), play3: play(3), play4: play(4), play5: play(5),
+      g1: fb(1), g2: fb(2), g3: fb(3), g4: fb(4), g5: fb(5),
+      b1: fc(1), b2: fc(2), b3: fc(3), b4: fc(4), b5: fc(5),
+      doReset: () => { this.api && this.api.reset(); this.setState({ log: [], decision: null }); },
+      hasSel: !!z, insp,
+      closeSel: () => { this.api && this.api.select(null); this.setState({ sel: null }); },
+      hasDecision: !!d, decision,
+      noLog: s.log.length === 0,
+      log: s.log.map((e, i) => ({ text: e.text, dot: KC[e.kind] || '#c9d3de', fg: i === s.log.length - 1 ? '#eef3f8' : '#9aa6b4' })),
+      wanMs: st ? st.wanMs : 50,
+      wanColor: st && st.wanHot > .5 ? '#ff4545' : '#6fc3d9',
+      hint: s.view === '3d' ? 'drag to orbit · scroll to zoom · click a server cabinet' : 'click a zone card to inspect',
+    };
+  }
+}
+</script>
+</body>
+</html>
