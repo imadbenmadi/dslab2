@@ -684,7 +684,7 @@ async function createPCNME(root, cb = {}) {
     for (let k = 0; k < 3; k++) { const a = k*Math.PI*2/3, c = new THREE.Mesh(new THREE.CylinderGeometry(.48,.48,6,16), bcM); c.position.set(Math.cos(a)*.8, 3.2, Math.sin(a)*.8); bg.add(c); }
     const ct = new THREE.Mesh(new THREE.CylinderGeometry(1.7,1.7,.16,24), MS(0x6d7682)); ct.position.y = 6.3; bg.add(ct);
     const bb = new THREE.Mesh(new THREE.SphereGeometry(.26,16,12), MB(0xdfe6ee)); bb.position.y = 6.8; bg.add(bb);
-    mkLabel('<span style="font:600 15px ' + SANS + ';color:#eef3f8">MQTT broker</span> <span style="color:#8b97a5;font-size:12px">EMQX cluster · metro edge · always on</span>', () => new THREE.Vector3(BROKER.x, 8.3, BROKER.z));
+    mkLabel('<span style="font:600 15px ' + SANS + ';color:#eef3f8">MQTT broker</span> <span style="color:#8b97a5;font-size:12px">EMQX cluster · metro edge </span>', () => new THREE.Vector3(BROKER.x, 8.3, BROKER.z));
 
     function pos3(id) {
       const [k, v] = id.split(':');
@@ -893,7 +893,7 @@ async function createPCNME(root, cb = {}) {
     const wanTxt = T(WX-8, 124, 'WAN · 50 ms', { fill:'#9fd4ff', 'font-size':15, 'text-anchor':'end' });
     T(WX-8, 236, 'task input (HTTP)', { fill:'#6f7c8b', 'font-size':13, 'text-anchor':'end' });
     E('rect', { x:60, y:290, width:1170, height:28, rx:14, fill:'#262c34', stroke:'#4b535d', 'stroke-width':1.5 });
-    T(70, 282, 'MQTT broker · EMQX cluster (metro edge) · always on, no fallback', { fill:'#c9d1da', 'font-size':15, 'font-weight':500 });
+    T(70, 282, 'MQTT broker · EMQX cluster (metro edge)', { fill:'#c9d1da', 'font-size':15, 'font-weight':500 });
     E('line', { x1:190, y1:PEER, x2:1110, y2:PEER, stroke:H6(COL.link), 'stroke-width':1.5, 'stroke-dasharray':'6 6', opacity:.7 });
     T(1120, PEER+5, 'backhaul 1–5 ms', { fill:'#6f7c8b', 'font-size':12 });
     for (const r of ['A','B']) {
